@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DSA Tracker</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f7f6f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e3e1da;--acc:#2f5d50;--accfg:#fff;--easy:#2e7d4f;--med:#b7791f;--hard:#b83a3a;--code:#f0efe9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161715;--card:#1f211e;--ink:#ecebe6;--mute:#9a9992;--line:#32342f;--acc:#7fc4ad;--accfg:#11201b;--easy:#6fcf97;--med:#e5b45c;--hard:#ee7b7b;--code:#161715}}
+:root[data-theme="dark"]{--bg:#161715;--card:#1f211e;--ink:#ecebe6;--mute:#9a9992;--line:#32342f;--acc:#7fc4ad;--accfg:#11201b;--easy:#6fcf97;--med:#e5b45c;--hard:#ee7b7b;--code:#161715}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.sub{color:var(--mute);font-size:13px}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);padding:7px 12px;border-radius:8px}
+button.p{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:600}
+button.d{color:var(--hard)}
+button:hover{filter:brightness(.96)}
+input,select,textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+textarea{resize:vertical;min-height:70px}
+textarea.code,pre{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:2}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.stat b{display:block;font-size:20px}.stat span{font-size:12px;color:var(--mute)}
+.bar{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+@media(max-width:640px){.bar{grid-template-columns:1fr 1fr}.bar input{grid-column:1/-1}}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.item:hover{border-color:var(--acc)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.t{font-weight:600;flex:1;min-width:160px}
+.badge{font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute);white-space:nowrap}
+.Easy{color:var(--easy);border-color:var(--easy)}.Medium{color:var(--med);border-color:var(--med)}.Hard{color:var(--hard);border-color:var(--hard)}
+.Solved{background:var(--acc);color:var(--accfg);border-color:var(--acc)}.Revisit{color:var(--med);border-color:var(--med)}
+.empty{text-align:center;color:var(--mute);padding:40px 10px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;justify-content:center;align-items:flex-start;overflow:auto;padding:max(16px,env(safe-area-inset-top,0px)) 12px 24px;z-index:9}
+.modal{background:var(--bg);border-radius:14px;max-width:760px;width:100%;padding:18px;border:1px solid var(--line)}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:10px}.f .w{grid-column:1/-1}
+@media(max-width:560px){.f{grid-template-columns:1fr}}
+label{font-size:12px;color:var(--mute);display:block;margin-bottom:2px}
+.tabs{display:flex;gap:6px;margin:12px 0 6px}
+.tabs button.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto;margin:0;white-space:pre}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);margin:16px 0 4px}
+p.n{white-space:pre-wrap;margin:0}
+.note{font-size:12px;background:var(--card);border:1px dashed var(--line);border-radius:8px;padding:6px 10px;margin-bottom:12px;color:var(--mute)}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>DSA Tracker</h1><div class="sub">Java &amp; JavaScript solutions, notes, and revision list</div></div>
+    <div class="row"><button id="lock" title="Forget password on this device">Lock</button><button id="imp">Import</button><input type="file" id="impf" accept="application/json" hidden><button id="exp">Export</button><button class="p" id="add">+ Add problem</button></div>
+  </header>
+  <div id="mode"></div>
+  <div class="stats" id="stats"></div>
+  <div class="bar">
+    <input id="q" placeholder="Search title, tag, notes, code…">
+    <select id="fTopic"></select>
+    <select id="fDiff"><option value="">All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select>
+    <select id="fStat"><option value="">All status</option><option>Todo</option><option>Attempted</option><option>Solved</option><option>Revisit</option></select>
+    <select id="fLang"><option value="">Any language</option><option value="java">Has Java</option><option value="js">Has JS</option><option value="both">Both</option></select>
+  </div>
+  <div id="list"><div class="empty">Loading…</div></div>
+</div>
+<div id="ovr"></div>
+<script>
+const TOPICS=["Arrays","Strings","Hash Map","Two Pointers","Sliding Window","Stack / Queue","Linked List","Trees","Graphs","Heap","Binary Search","Recursion / Backtracking","Dynamic Programming","Greedy","Sorting","Bit Manipulation","Math","Trie"];
+const $=s=>document.querySelector(s);
+function h(t,a={},...c){const e=document.createElement(t);for(const k in a){if(k==='class')e.className=a[k];else if(k.startsWith('on'))e.addEventListener(k.slice(2),a[k]);else e.setAttribute(k,a[k]);}c.flat().forEach(x=>{if(x!=null&&x!==false)e.append(x.nodeType?x:document.createTextNode(x))});return e}
+let items=[],ready=false;
+const PW='dsa-tracker-pw';
+function banner(msg){const m=$('#mode');m.replaceChildren(msg?h('div',{class:'note'},msg):'')}
+async function api(method,body,qs=''){
+  for(;;){
+    let pw=localStorage.getItem(PW);
+    if(!pw){pw=prompt('Enter your tracker password');if(pw==null)throw new Error('cancelled');localStorage.setItem(PW,pw)}
+    const r=await fetch('/api/problems'+qs,{method,headers:{'Content-Type':'application/json','x-password':pw},body:body?JSON.stringify(body):undefined});
+    if(r.status===401){localStorage.removeItem(PW);alert('Wrong password, try again.');continue}
+    if(!r.ok)throw new Error('Request failed ('+r.status+')');
+    return r.json();
+  }
+}
+async function init(){
+  try{items=await api('GET');banner('')}
+  catch(e){items=[];banner('Could not load from the server: '+e.message+'. Refresh to retry.')}
+  ready=true;render();
+}
+async function save(it){
+  it.updated=Date.now();
+  try{await api('PUT',it);const i=items.findIndex(x=>x.id===it.id);i>=0?items[i]=it:items.unshift(it);banner('')}
+  catch(e){banner('Save failed: '+e.message)}
+  render();
+}
+async function del(id){
+  try{await api('DELETE',null,'?id='+encodeURIComponent(id));items=items.filter(x=>x.id!==id);banner('')}
+  catch(e){banner('Delete failed: '+e.message)}
+  render();
+}
+
+function render(){
+  if(!ready)return;
+  const topics=[...new Set(items.map(i=>i.topic).filter(Boolean))].sort();
+  const ft=$('#fTopic'),cur=ft.value;
+  ft.replaceChildren(h('option',{value:''},'All topics'),...topics.map(t=>h('option',{value:t},t)));
+  ft.value=topics.includes(cur)?cur:'';
+  const n=s=>items.filter(i=>i.status===s).length;
+  $('#stats').replaceChildren(...[['Total',items.length],['Solved',n('Solved')],['To revisit',n('Revisit')],['Java',items.filter(i=>i.java).length],['JS',items.filter(i=>i.js).length]]
+    .map(([l,v])=>h('div',{class:'stat'},h('b',{},v),h('span',{},l))));
+  const q=$('#q').value.toLowerCase(),d=$('#fDiff').value,s=$('#fStat').value,l=$('#fLang').value,tp=ft.value;
+  const res=items.filter(i=>{
+    if(tp&&i.topic!==tp)return false;if(d&&i.difficulty!==d)return false;if(s&&i.status!==s)return false;
+    if(l==='java'&&!i.java)return false;if(l==='js'&&!i.js)return false;if(l==='both'&&!(i.java&&i.js))return false;
+    if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.topic].join(' ').toLowerCase().includes(q))return false;
+    return true}).sort((a,b)=>(b.updated||0)-(a.updated||0));
+  $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},items.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
+}
+function card(i){
+  return h('div',{class:'item',onclick:()=>view(i.id)},
+    h('div',{class:'row'},h('span',{class:'t'},i.title),
+      i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
+      h('span',{class:'badge '+i.status},i.status||'Todo')),
+    h('div',{class:'row sub',style:'margin-top:4px'},i.topic,i.java&&'· Java',i.js&&'· JS',i.tags&&'· '+i.tags));
+}
+function close(){$('#ovr').replaceChildren()}
+function modal(...c){const o=h('div',{class:'ov',onclick:e=>{if(e.target===o)close()}},h('div',{class:'modal'},...c));$('#ovr').replaceChildren(o)}
+
+function view(id){
+  const i=items.find(x=>x.id===id);if(!i)return;
+  const langs=[['java','Java'],['js','JavaScript']].filter(([k])=>i[k]);
+  const codeBox=h('div');let cur=langs[0]?.[0];
+  const tabs=h('div',{class:'tabs'});
+  function showCode(){
+    tabs.replaceChildren(...langs.map(([k,n])=>h('button',{class:k===cur?'on':'',onclick:()=>{cur=k;showCode()}},n)),
+      langs.length?h('button',{onclick:e=>{navigator.clipboard?.writeText(i[cur]);e.target.textContent='Copied';setTimeout(()=>e.target.textContent='Copy',1200)}},'Copy'):null);
+    codeBox.replaceChildren(cur?h('pre',{},i[cur]):h('div',{class:'sub'},'No code saved yet.'));
+  }
+  showCode();
+  const st=h('select',{onchange:async e=>{i.status=e.target.value;await save(i);view(id)}},...['Todo','Attempted','Solved','Revisit'].map(o=>h('option',{},o)));
+  st.value=i.status||'Todo';st.style.width='auto';
+  modal(
+    h('div',{class:'row'},h('h1',{style:'flex:1'},i.title),h('button',{onclick:close},'Close')),
+    h('div',{class:'row',style:'margin:8px 0'},i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),i.topic&&h('span',{class:'badge'},i.topic),st,
+      i.url&&h('a',{href:i.url,target:'_blank',rel:'noopener'},'Open problem ↗')),
+    i.tags&&h('div',{class:'sub'},'Tags: '+i.tags),
+    (i.time||i.space)&&h('div',{},h('h3',{},'Complexity'),h('p',{class:'n'},`Time: ${i.time||'—'}   Space: ${i.space||'—'}`)),
+    i.approach&&h('div',{},h('h3',{},'Approach'),h('p',{class:'n'},i.approach)),
+    h('h3',{},'Solution'),tabs,codeBox,
+    i.notes&&h('div',{},h('h3',{},'Notes / mistakes'),h('p',{class:'n'},i.notes)),
+    h('div',{class:'row',style:'margin-top:18px'},h('button',{class:'p',onclick:()=>form(i)},'Edit'),
+      h('button',{class:'d',onclick:async()=>{if(confirm('Delete this problem?')){await del(i.id);close()}}},'Delete'))
+  );
+}
+function form(i){
+  const e=i||{id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:'Todo',difficulty:'Medium',created:Date.now()};
+  const F={};
+  const fld=(k,lab,el,w)=>{F[k]=el;if(e[k]!=null&&el.tagName!=='SELECT')el.value=e[k];if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;return h('div',{class:w?'w':''},h('label',{},lab),el)};
+  const sel=(...o)=>h('select',{},...o.map(x=>h('option',{},x)));
+  const code=(ph)=>h('textarea',{class:'code',rows:10,spellcheck:'false',placeholder:ph,onkeydown:ev=>{if(ev.key==='Tab'){ev.preventDefault();const t=ev.target,s=t.selectionStart;t.setRangeText('  ',s,t.selectionEnd,'end')}}});
+  modal(
+    h('h1',{},i?'Edit problem':'Add problem'),
+    h('div',{class:'f',style:'margin-top:12px'},
+      fld('title','Title *',h('input',{placeholder:'e.g. Two Sum'}),1),
+      fld('url','Link (LeetCode, GFG…)',h('input',{placeholder:'https://…'}),1),
+      fld('difficulty','Difficulty',sel('Easy','Medium','Hard')),
+      fld('status','Status',sel('Todo','Attempted','Solved','Revisit')),
+      fld('topic','Topic',h('input',{list:'tl',placeholder:'Arrays'})),
+      fld('tags','Tags (comma separated)',h('input',{placeholder:'hashing, interview'})),
+      fld('time','Time complexity',h('input',{placeholder:'O(n)'})),
+      fld('space','Space complexity',h('input',{placeholder:'O(n)'})),
+      fld('approach','Approach / intuition',h('textarea',{rows:3}),1),
+      fld('java','Java solution',code('class Solution { … }'),1),
+      fld('js','JavaScript solution',code('function solve() { … }'),1),
+      fld('notes','Notes, mistakes, edge cases',h('textarea',{rows:3}),1)),
+    h('datalist',{id:'tl'},...TOPICS.map(t=>h('option',{value:t}))),
+    h('div',{class:'row',style:'margin-top:16px'},
+      h('button',{class:'p',onclick:async()=>{
+        const o={...e};for(const k in F)o[k]=F[k].value.trim?F[k].value.trim():F[k].value;
+        if(!o.title){F.title.focus();return}
+        await save(o);i?view(o.id):close();
+      }},'Save'),h('button',{onclick:()=>i?view(i.id):close()},'Cancel'))
+  );
+  F.title.focus();
+}
+
+$('#add').onclick=()=>form();
+['q','fTopic','fDiff','fStat','fLang'].forEach(id=>$('#'+id).addEventListener('input',render));
+$('#exp').onclick=()=>{
+  const u=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));
+  const a=h('a',{href:u,download:'dsa-tracker-backup.json'});document.body.append(a);a.click();a.remove();URL.revokeObjectURL(u);
+};
+$('#imp').onclick=()=>$('#impf').click();
+$('#impf').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const arr=JSON.parse(await f.text());
+    if(!Array.isArray(arr)||arr.some(x=>!x||!x.id||!x.title))throw new Error('not a valid backup file');
+    await api('PUT',arr);items=await api('GET');render();alert('Imported '+arr.length+' problems.');
+  }catch(err){alert('Import failed: '+err.message)}
+};
+$('#lock').onclick=()=>{localStorage.removeItem(PW);location.reload()};
+init();
+</script>
+</body>
+</html>
