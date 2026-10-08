@@ -49,6 +49,15 @@ h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute
 p.n{white-space:pre-wrap;margin:0}
 .note{font-size:12px;background:var(--card);border:1px dashed var(--line);border-radius:8px;padding:6px 10px;margin-bottom:12px;color:var(--mute)}
 a{color:var(--acc)}
+table{border-collapse:collapse;font-size:13px;margin:6px 0;width:100%}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;white-space:nowrap}th{background:var(--card)}
+.nav{display:flex;gap:6px;margin-bottom:14px}.nav button.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.vb{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;background:var(--card);margin-bottom:8px}
+.vb .row input{flex:1;min-width:110px}
+.f h3{grid-column:1/-1;margin:10px 0 0}
+details{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px}summary{cursor:pointer;font-weight:600}
+.kv{display:grid;gap:8px}.kv b{font-size:12px;color:var(--mute);display:block}
+.link{cursor:pointer;text-decoration:underline}[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -58,6 +67,8 @@ a{color:var(--acc)}
     <div class="row"><button id="lock" title="Forget password on this device">Lock</button><button id="imp">Import</button><input type="file" id="impf" accept="application/json" hidden><button id="exp">Export</button><button class="p" id="add">+ Add problem</button></div>
   </header>
   <div id="mode"></div>
+  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button></div>
+  <div id="pv">
   <div class="stats" id="stats"></div>
   <div class="bar">
     <input id="q" placeholder="Search title, tag, notes, code…">
@@ -67,6 +78,8 @@ a{color:var(--acc)}
     <select id="fLang"><option value="">Any language</option><option value="java">Has Java</option><option value="js">Has JS</option><option value="both">Both</option></select>
   </div>
   <div id="list"><div class="empty">Loading…</div></div>
+  </div>
+  <div id="patv" hidden><div class="row" style="margin-bottom:10px"><button class="p" id="addp">+ Add pattern</button><span class="sub">Recognition cues and reusable templates for each pattern</span></div><div id="patl"></div></div>
 </div>
 <div id="ovr"></div>
 <script>
@@ -103,65 +116,117 @@ async function del(id){
   render();
 }
 
+let tab='problems';
+const PATS=["Two Pointers","Sliding Window","Fast & Slow Pointers","Prefix Sum","Hashing","Binary Search","Monotonic Stack","BFS","DFS","Backtracking","DP (1D)","DP (2D)","Greedy","Heap / Top-K","Union Find","Topological Sort","Intervals","Trie","Bit Manipulation"];
+const CUES={"Two Pointers":"Sorted array or string; find a pair or triplet; compare both ends; in-place removal or partition.","Sliding Window":"Contiguous subarray or substring; longest, shortest or count under a constraint; the window grows and shrinks.","Prefix Sum":"Many range-sum queries; subarray sum equals K; cumulative counts.","Hashing":"Need fast lookup, counts, duplicates or a complement (target - x).","Binary Search":"Sorted data, or a monotonic yes/no answer you can search on (smallest or largest feasible value).","Monotonic Stack":"Next greater or smaller element; spans; largest rectangle.","BFS":"Shortest path in an unweighted graph or grid; level by level; minimum steps.","DFS":"Explore all paths, connected components, tree recursion, cycle detection.","Backtracking":"Generate all combinations, permutations or subsets: choose, explore, undo.","DP (1D)":"Overlapping subproblems; count ways or min/max; state depends on the previous few values.","DP (2D)":"Two sequences or a grid; state is (i, j); LCS, edit distance, grid paths.","Greedy":"A local best choice is provably safe; intervals and scheduling; try sorting first.","Heap / Top-K":"K largest or smallest, streaming median, repeatedly need the current min or max."};
+const P=()=>items.filter(i=>i.kind!=='pattern'),PR=()=>items.filter(i=>i.kind==='pattern');
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const patNames=()=>{const c={};P().forEach(i=>{if(i.pattern)c[i.pattern]=(c[i.pattern]||0)+1});
+  return [...new Set([...PATS,...PR().map(p=>p.title),...Object.keys(c)])].sort((a,b)=>(c[b]||0)-(c[a]||0)||a.localeCompare(b))};
+const tabKey=ev=>{if(ev.key==='Tab'){ev.preventDefault();const t=ev.target;t.setRangeText('  ',t.selectionStart,t.selectionEnd,'end')}};
+const sec=(l,c)=>c?h('div',{},h('h3',{},l),c):null;
+
+function rich(t){
+  const out=h('div');let tb=[],tx=[];
+  const fl=()=>{if(!tb.length)return;
+    const rows=tb.filter(r=>!/^[\s|:-]+$/.test(r)).map(r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
+    const [hd,...bd]=rows;
+    out.append(h('div',{style:'overflow-x:auto'},h('table',{},h('thead',{},h('tr',{},...hd.map(c=>h('th',{},c)))),h('tbody',{},...bd.map(r=>h('tr',{},...r.map(c=>h('td',{},c))))))));tb=[]};
+  const ft=()=>{if(tx.length){out.append(h('p',{class:'n'},tx.join('\n')));tx=[]}};
+  for(const l of (t||'').split('\n')){if(l.trim().startsWith('|')){ft();tb.push(l)}else{fl();tx.push(l)}}
+  fl();ft();return out}
+
+function codeTabs(o){
+  const langs=[['java','Java'],['js','JavaScript']].filter(([k])=>o[k]);
+  const box=h('div'),tabs=h('div',{class:'tabs'});let cur=langs[0]?.[0];
+  const show=()=>{
+    tabs.replaceChildren(...langs.map(([k,n])=>h('button',{class:k===cur?'on':'',onclick:()=>{cur=k;show()}},n)),
+      langs.length?h('button',{onclick:e=>{navigator.clipboard?.writeText(o[cur]);const b=e.target;b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200)}},'Copy'):null);
+    box.replaceChildren(cur?h('pre',{},o[cur]):h('div',{class:'sub'},'No code saved yet.'))};
+  show();return h('div',{},tabs,box)}
+
 function render(){
   if(!ready)return;
-  const topics=[...new Set(items.map(i=>i.topic).filter(Boolean))].sort();
+  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';
+  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';
+  const A=P();
+  const topics=[...new Set(A.map(i=>i.topic).filter(Boolean))].sort();
   const ft=$('#fTopic'),cur=ft.value;
   ft.replaceChildren(h('option',{value:''},'All topics'),...topics.map(t=>h('option',{value:t},t)));
   ft.value=topics.includes(cur)?cur:'';
-  const n=s=>items.filter(i=>i.status===s).length;
-  $('#stats').replaceChildren(...[['Total',items.length],['Solved',n('Solved')],['To revisit',n('Revisit')],['Java',items.filter(i=>i.java).length],['JS',items.filter(i=>i.js).length]]
+  const n=s=>A.filter(i=>i.status===s).length;
+  $('#stats').replaceChildren(...[['Total',A.length],['Solved',n('Solved')],['To revisit',n('Revisit')],['Java',A.filter(i=>i.java).length],['JS',A.filter(i=>i.js).length]]
     .map(([l,v])=>h('div',{class:'stat'},h('b',{},v),h('span',{},l))));
   const q=$('#q').value.toLowerCase(),d=$('#fDiff').value,s=$('#fStat').value,l=$('#fLang').value,tp=ft.value;
-  const res=items.filter(i=>{
+  const res=A.filter(i=>{
     if(tp&&i.topic!==tp)return false;if(d&&i.difficulty!==d)return false;if(s&&i.status!==s)return false;
     if(l==='java'&&!i.java)return false;if(l==='js'&&!i.js)return false;if(l==='both'&&!(i.java&&i.js))return false;
-    if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.topic].join(' ').toLowerCase().includes(q))return false;
+    if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.topic,i.pattern,i.cue,i.insight,(i.versions||[]).map(v=>[v.name,v.java,v.js].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
     return true}).sort((a,b)=>(b.updated||0)-(a.updated||0));
-  $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},items.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
+  $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},A.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
+  renderPats();
 }
 function card(i){
   return h('div',{class:'item',onclick:()=>view(i.id)},
     h('div',{class:'row'},h('span',{class:'t'},i.title),
       i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
       h('span',{class:'badge '+i.status},i.status||'Todo')),
-    h('div',{class:'row sub',style:'margin-top:4px'},i.topic,i.java&&'· Java',i.js&&'· JS',i.tags&&'· '+i.tags));
+    h('div',{class:'row sub',style:'margin-top:4px'},i.pattern&&'◆ '+i.pattern,i.topic&&'· '+i.topic,i.java&&'· Java',i.js&&'· JS',(i.versions||[]).length?'· '+(i.versions.length+1)+' versions':null,i.trace?'· trace':null));
+}
+function renderPats(){
+  const A=P(),saved=Object.fromEntries(PR().map(p=>[p.title,p]));
+  $('#patl').replaceChildren(...patNames().map(n=>{
+    const c=A.filter(i=>i.pattern===n).length;
+    return h('div',{class:'item',onclick:()=>patView(n)},
+      h('div',{class:'row'},h('span',{class:'t'},n),h('span',{class:'badge'},c+(c===1?' problem':' problems'))),
+      h('div',{class:'sub',style:'margin-top:4px'},saved[n]?.cues||CUES[n]||'No recognition cues yet.'))}));
 }
 function close(){$('#ovr').replaceChildren()}
 function modal(...c){const o=h('div',{class:'ov',onclick:e=>{if(e.target===o)close()}},h('div',{class:'modal'},...c));$('#ovr').replaceChildren(o)}
 
 function view(id){
   const i=items.find(x=>x.id===id);if(!i)return;
-  const langs=[['java','Java'],['js','JavaScript']].filter(([k])=>i[k]);
-  const codeBox=h('div');let cur=langs[0]?.[0];
-  const tabs=h('div',{class:'tabs'});
-  function showCode(){
-    tabs.replaceChildren(...langs.map(([k,n])=>h('button',{class:k===cur?'on':'',onclick:()=>{cur=k;showCode()}},n)),
-      langs.length?h('button',{onclick:e=>{navigator.clipboard?.writeText(i[cur]);e.target.textContent='Copied';setTimeout(()=>e.target.textContent='Copy',1200)}},'Copy'):null);
-    codeBox.replaceChildren(cur?h('pre',{},i[cur]):h('div',{class:'sub'},'No code saved yet.'));
-  }
-  showCode();
   const st=h('select',{onchange:async e=>{i.status=e.target.value;await save(i);view(id)}},...['Todo','Attempted','Solved','Revisit'].map(o=>h('option',{},o)));
   st.value=i.status||'Todo';st.style.width='auto';
+  const ck=[['Brute force',i.brute],['Bottleneck',i.bottleneck],['Key insight',i.insight],['Edge cases',i.edge]].filter(x=>x[1]);
+  const next=(i.cue||ck.length)?h('div',{class:'kv'},
+    i.cue&&h('div',{},h('b',{},'How to recognise it'),h('p',{class:'n'},i.cue)),
+    ...ck.map(([k,v])=>h('div',{},h('b',{},k),h('p',{class:'n'},v)))):null;
+  const vers=(i.versions||[]).length?h('div',{},...i.versions.map(v=>h('details',{},
+    h('summary',{},(v.name||'Version')+((v.time||v.space)?` · ${v.time||'—'} time, ${v.space||'—'} space`:'')),
+    v.note&&h('p',{class:'n'},v.note),codeTabs(v)))):null;
   modal(
     h('div',{class:'row'},h('h1',{style:'flex:1'},i.title),h('button',{onclick:close},'Close')),
-    h('div',{class:'row',style:'margin:8px 0'},i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),i.topic&&h('span',{class:'badge'},i.topic),st,
+    h('div',{class:'row',style:'margin:8px 0'},i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
+      i.pattern&&h('span',{class:'badge link',onclick:()=>patView(i.pattern)},'◆ '+i.pattern),i.topic&&h('span',{class:'badge'},i.topic),st,
       i.url&&h('a',{href:i.url,target:'_blank',rel:'noopener'},'Open problem ↗')),
     i.tags&&h('div',{class:'sub'},'Tags: '+i.tags),
-    (i.time||i.space)&&h('div',{},h('h3',{},'Complexity'),h('p',{class:'n'},`Time: ${i.time||'—'}   Space: ${i.space||'—'}`)),
-    i.approach&&h('div',{},h('h3',{},'Approach'),h('p',{class:'n'},i.approach)),
-    h('h3',{},'Solution'),tabs,codeBox,
-    i.notes&&h('div',{},h('h3',{},'Notes / mistakes'),h('p',{class:'n'},i.notes)),
+    sec('Next time: how to approach it',next),
+    (i.time||i.space)?sec('Complexity (final solution)',h('p',{class:'n'},`Time: ${i.time||'—'}   Space: ${i.space||'—'}`)):null,
+    sec('Approach',i.approach&&h('p',{class:'n'},i.approach)),
+    sec('Solution (final)',(i.java||i.js)?codeTabs(i):null),
+    sec('Other versions',vers),
+    sec('Trace (dry run)',(i.trace||i.traceInput)?h('div',{},i.traceInput&&h('p',{class:'n'},'Input: '+i.traceInput),rich(i.trace)):null),
+    sec('Notes / mistakes',i.notes&&h('p',{class:'n'},i.notes)),
     h('div',{class:'row',style:'margin-top:18px'},h('button',{class:'p',onclick:()=>form(i)},'Edit'),
       h('button',{class:'d',onclick:async()=>{if(confirm('Delete this problem?')){await del(i.id);close()}}},'Delete'))
   );
 }
 function form(i){
   const e=i||{id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:'Todo',difficulty:'Medium',created:Date.now()};
-  const F={};
-  const fld=(k,lab,el,w)=>{F[k]=el;if(e[k]!=null&&el.tagName!=='SELECT')el.value=e[k];if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;return h('div',{class:w?'w':''},h('label',{},lab),el)};
+  const F={},vs=[];
+  const fld=(k,lab,el,w)=>{F[k]=el;if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;else if(e[k]!=null)el.value=e[k];return h('div',{class:w?'w':''},h('label',{},lab),el)};
   const sel=(...o)=>h('select',{},...o.map(x=>h('option',{},x)));
-  const code=(ph)=>h('textarea',{class:'code',rows:10,spellcheck:'false',placeholder:ph,onkeydown:ev=>{if(ev.key==='Tab'){ev.preventDefault();const t=ev.target,s=t.selectionStart;t.setRangeText('  ',s,t.selectionEnd,'end')}}});
+  const ta=(r,code,ph)=>{const a={rows:r,placeholder:ph||''};if(code){a.class='code';a.spellcheck='false';a.onkeydown=tabKey}return h('textarea',a)};
+  const vbox=h('div',{class:'w'});
+  const addV=(v={})=>{
+    const f={},mk=(k,ph,r,code)=>{const el=r?ta(r,code,ph):h('input',{placeholder:ph});el.value=v[k]||'';f[k]=el;return el};
+    const b=h('div',{class:'vb'},
+      h('div',{class:'row'},mk('name','Name, e.g. Brute force'),mk('time','Time'),mk('space','Space'),
+        h('button',{class:'d',onclick:()=>{b.remove();vs.splice(vs.indexOf(f),1)}},'Remove')),
+      mk('note','What changed or why this version',2),mk('java','Java',6,1),mk('js','JavaScript',6,1));
+    vs.push(f);vbox.append(b)};
+  (e.versions||[]).forEach(addV);
   modal(
     h('h1',{},i?'Edit problem':'Add problem'),
     h('div',{class:'f',style:'margin-top:12px'},
@@ -170,25 +235,77 @@ function form(i){
       fld('difficulty','Difficulty',sel('Easy','Medium','Hard')),
       fld('status','Status',sel('Todo','Attempted','Solved','Revisit')),
       fld('topic','Topic',h('input',{list:'tl',placeholder:'Arrays'})),
-      fld('tags','Tags (comma separated)',h('input',{placeholder:'hashing, interview'})),
+      fld('pattern','Pattern',h('input',{list:'pl',placeholder:'Sliding Window'})),
+      fld('tags','Tags (comma separated)',h('input',{placeholder:'hashing, interview'}),1),
+      h('h3',{},'Next time: how to approach it'),
+      fld('cue','How I recognise this kind of problem',ta(2,0,'Clues in the statement that point to the pattern'),1),
+      fld('brute','Brute force',ta(2)),fld('bottleneck','Bottleneck',ta(2)),
+      fld('insight','Key insight',ta(2)),fld('edge','Edge cases',ta(2)),
+      h('h3',{},'Final solution'),
       fld('time','Time complexity',h('input',{placeholder:'O(n)'})),
       fld('space','Space complexity',h('input',{placeholder:'O(n)'})),
-      fld('approach','Approach / intuition',h('textarea',{rows:3}),1),
-      fld('java','Java solution',code('class Solution { … }'),1),
-      fld('js','JavaScript solution',code('function solve() { … }'),1),
-      fld('notes','Notes, mistakes, edge cases',h('textarea',{rows:3}),1)),
+      fld('approach','Approach / intuition',ta(3),1),
+      fld('java','Java',ta(10,1,'class Solution { … }'),1),
+      fld('js','JavaScript',ta(10,1,'function solve() { … }'),1),
+      h('h3',{},'Other versions (brute force, better, alternatives)'),
+      vbox,h('div',{class:'w'},h('button',{onclick:()=>addV()},'+ Add version')),
+      h('h3',{},'Trace (dry run)'),
+      fld('traceInput','Sample input',h('input',{placeholder:'nums = [2,7,11,15], target = 9'}),1),
+      fld('trace','Paste a table like  | Step | i | map |  then rows',ta(8,1,'| Step | i | need | map |\n|---|---|---|---|\n| 1 | 0 | 7 | {} |'),1),
+      h('h3',{},'Notes'),
+      fld('notes','Notes, mistakes',ta(3),1)),
     h('datalist',{id:'tl'},...TOPICS.map(t=>h('option',{value:t}))),
+    h('datalist',{id:'pl'},...patNames().map(t=>h('option',{value:t}))),
     h('div',{class:'row',style:'margin-top:16px'},
       h('button',{class:'p',onclick:async()=>{
-        const o={...e};for(const k in F)o[k]=F[k].value.trim?F[k].value.trim():F[k].value;
+        const o={...e};for(const k in F)o[k]=F[k].value.trim();
         if(!o.title){F.title.focus();return}
+        o.versions=vs.map(f=>Object.fromEntries(Object.entries(f).map(([k,el])=>[k,el.value.trim()]))).filter(v=>v.name||v.java||v.js);
         await save(o);i?view(o.id):close();
       }},'Save'),h('button',{onclick:()=>i?view(i.id):close()},'Cancel'))
   );
   F.title.focus();
 }
+function patView(n){
+  const s=PR().find(p=>p.title===n)||{title:n},ps=P().filter(i=>i.pattern===n);
+  modal(
+    h('div',{class:'row'},h('h1',{style:'flex:1'},n),h('button',{onclick:close},'Close')),
+    sec('How to recognise it',h('p',{class:'n'},s.cues||CUES[n]||'Not written yet. Click Edit to add.')),
+    sec('Common pitfalls',s.pitfalls&&h('p',{class:'n'},s.pitfalls)),
+    sec('Template',(s.java||s.js)?codeTabs(s):null),
+    h('h3',{},`Your problems (${ps.length})`),
+    ...(ps.length?ps.map(i=>h('div',{class:'item',onclick:()=>view(i.id)},h('div',{class:'row'},h('span',{class:'t'},i.title),
+      i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),h('span',{class:'badge '+i.status},i.status||'Todo')))):[h('div',{class:'sub'},'None yet. Set this pattern when you add a problem.')]),
+    h('div',{class:'row',style:'margin-top:18px'},h('button',{class:'p',onclick:()=>patForm(n)},'Edit'),
+      s.id&&h('button',{class:'d',onclick:async()=>{if(confirm('Delete your saved notes for this pattern?')){await del(s.id);close()}}},'Delete notes'))
+  );
+}
+function patForm(n){
+  const s=(n&&PR().find(p=>p.title===n))||{kind:'pattern',title:n||''};
+  const F={};
+  const fld=(k,lab,el)=>{F[k]=el;el.value=s[k]??(k==='cues'?(CUES[n]||''):'');return h('div',{},h('label',{},lab),el)};
+  const ta=(r,code)=>{const a={rows:r};if(code){a.class='code';a.spellcheck='false';a.onkeydown=tabKey}return h('textarea',a)};
+  modal(
+    h('h1',{},n?'Edit pattern':'Add pattern'),
+    h('div',{style:'display:grid;gap:10px;margin-top:12px'},
+      fld('title','Pattern name *',h('input',{placeholder:'e.g. Sliding Window'})),
+      fld('cues','How to recognise it',ta(3)),
+      fld('pitfalls','Common pitfalls',ta(3)),
+      fld('java','Java template',ta(10,1)),fld('js','JavaScript template',ta(10,1))),
+    h('div',{class:'row',style:'margin-top:16px'},
+      h('button',{class:'p',onclick:async()=>{
+        const o={...s,kind:'pattern'};for(const k in F)o[k]=F[k].value.trim();
+        if(!o.title){F.title.focus();return}
+        o.id='pattern:'+slug(o.title);await save(o);patView(o.title)}},'Save'),
+      h('button',{onclick:()=>n?patView(n):close()},'Cancel'))
+  );
+  if(n)F.title.disabled=true;else F.title.focus();
+}
 
 $('#add').onclick=()=>form();
+$('#addp').onclick=()=>patForm();
+$('#tProb').onclick=()=>{tab='problems';render()};
+$('#tPat').onclick=()=>{tab='patterns';render()};
 ['q','fTopic','fDiff','fStat','fLang'].forEach(id=>$('#'+id).addEventListener('input',render));
 $('#exp').onclick=()=>{
   const u=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));
