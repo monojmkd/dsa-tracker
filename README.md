@@ -29,3 +29,6 @@ In the earlier version press **Export**, then in this one press **Import** and p
   Old data keeps working; the new fields are optional.
 
 See PROMPT.md for a prompt that makes Claude produce text you can paste straight into these fields.
+
+## TypeScript
+Every problem, version and pattern template now has a TypeScript box next to Java and JavaScript. Older entries without TS keep working.
