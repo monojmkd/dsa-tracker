@@ -15,6 +15,8 @@ Here is a DSA problem and my solution. Give me, as plain text I can paste into a
 8. Sample input, and a dry-run trace as a markdown table
    (header row, |---| separator row, one row per step, columns = the variables that change)
 
+9. One alternate approach: a name, a one-line idea, time and space complexity, code, and a small dry run as a markdown table
+
 Problem: ...
 My code (Java/JS/TS): ...
 ---

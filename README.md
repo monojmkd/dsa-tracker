@@ -22,7 +22,7 @@ In the earlier version press **Export**, then in this one press **Import** and p
 
 ## Traces, versions and patterns
 - **Trace**: on a problem, fill "Sample input" and paste a markdown table; it renders as a real table.
-- **Other versions**: add brute force / better / alternative solutions, each with its own Java, JS and complexity.
+- **Alternate approaches**: add brute force / better / other solutions. Each has its own time and space complexity, a note, Java / JS / TS code, and a small dry run (paste a markdown table; it renders as a table).
 - **Next time**: per-problem recognition cue, brute force, bottleneck, key insight and edge cases.
 - **Patterns tab**: one card per pattern with recognition cues, pitfalls, reusable Java/JS templates and your problems tagged with it.
   Pattern notes are stored in the same table (id starts with `pattern:`), so no database changes are needed.

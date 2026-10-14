@@ -171,7 +171,7 @@ function card(i){
     h('div',{class:'row'},h('span',{class:'t'},i.title),
       i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
       h('span',{class:'badge '+i.status},i.status||'Todo')),
-    h('div',{class:'row sub',style:'margin-top:4px'},i.pattern&&'◆ '+i.pattern,i.topic&&'· '+i.topic,i.java&&'· Java',i.js&&'· JS',i.ts&&'· TS',(i.versions||[]).length?'· '+(i.versions.length+1)+' versions':null,i.trace?'· trace':null));
+    h('div',{class:'row sub',style:'margin-top:4px'},i.pattern&&'◆ '+i.pattern,i.topic&&'· '+i.topic,i.java&&'· Java',i.js&&'· JS',i.ts&&'· TS',(i.versions||[]).length?'· '+(i.versions.length+1)+' approaches':null,i.trace?'· trace':null));
 }
 function renderPats(){
   const A=P(),saved=Object.fromEntries(PR().map(p=>[p.title,p]));
@@ -194,7 +194,7 @@ function view(id){
     ...ck.map(([k,v])=>h('div',{},h('b',{},k),h('p',{class:'n'},v)))):null;
   const vers=(i.versions||[]).length?h('div',{},...i.versions.map(v=>h('details',{},
     h('summary',{},(v.name||'Version')+((v.time||v.space)?` · ${v.time||'—'} time, ${v.space||'—'} space`:'')),
-    v.note&&h('p',{class:'n'},v.note),codeTabs(v)))):null;
+    (v.time||v.space)&&h('p',{class:'n'},`Time: ${v.time||'—'}   Space: ${v.space||'—'}`),v.note&&h('p',{class:'n'},v.note),codeTabs(v),v.trace&&h('div',{},h('h3',{},'Small dry run'),rich(v.trace))))):null;
   modal(
     h('div',{class:'row'},h('h1',{style:'flex:1'},i.title),h('button',{onclick:close},'Close')),
     h('div',{class:'row',style:'margin:8px 0'},i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
@@ -205,7 +205,7 @@ function view(id){
     (i.time||i.space)?sec('Complexity (final solution)',h('p',{class:'n'},`Time: ${i.time||'—'}   Space: ${i.space||'—'}`)):null,
     sec('Approach',i.approach&&h('p',{class:'n'},i.approach)),
     sec('Solution (final)',(i.java||i.js||i.ts)?codeTabs(i):null),
-    sec('Other versions',vers),
+    sec('Alternate approaches',vers),
     sec('Trace (dry run)',(i.trace||i.traceInput)?h('div',{},i.traceInput&&h('p',{class:'n'},'Input: '+i.traceInput),rich(i.trace)):null),
     sec('Notes / mistakes',i.notes&&h('p',{class:'n'},i.notes)),
     h('div',{class:'row',style:'margin-top:18px'},h('button',{class:'p',onclick:()=>form(i)},'Edit'),
@@ -224,7 +224,7 @@ function form(i){
     const b=h('div',{class:'vb'},
       h('div',{class:'row'},mk('name','Name, e.g. Brute force'),mk('time','Time'),mk('space','Space'),
         h('button',{class:'d',onclick:()=>{b.remove();vs.splice(vs.indexOf(f),1)}},'Remove')),
-      mk('note','What changed or why this version',2),mk('java','Java',6,1),mk('js','JavaScript',6,1),mk('ts','TypeScript',6,1));
+      mk('note','Idea, and what it trades off',2),mk('trace','Small dry run: an input line, then a table like | i | x | and |---|---|',5,1),mk('java','Java',6,1),mk('js','JavaScript',6,1),mk('ts','TypeScript',6,1));
     vs.push(f);vbox.append(b)};
   (e.versions||[]).forEach(addV);
   modal(
@@ -248,8 +248,8 @@ function form(i){
       fld('java','Java',ta(10,1,'class Solution { … }'),1),
       fld('js','JavaScript',ta(10,1,'function solve() { … }'),1),
       fld('ts','TypeScript',ta(10,1,'function solve(): void { … }'),1),
-      h('h3',{},'Other versions (brute force, better, alternatives)'),
-      vbox,h('div',{class:'w'},h('button',{onclick:()=>addV()},'+ Add version')),
+      h('h3',{},'Alternate approaches (brute force, better, other ways)'),
+      vbox,h('div',{class:'w'},h('button',{onclick:()=>addV()},'+ Add alternate approach')),
       h('h3',{},'Trace (dry run)'),
       fld('traceInput','Sample input',h('input',{placeholder:'nums = [2,7,11,15], target = 9'}),1),
       fld('trace','Paste a table like  | Step | i | map |  then rows',ta(8,1,'| Step | i | need | map |\n|---|---|---|---|\n| 1 | 0 | 7 | {} |'),1),
