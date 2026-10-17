@@ -58,16 +58,21 @@ th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;white-space:n
 details{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px}summary{cursor:pointer;font-weight:600}
 .kv{display:grid;gap:8px}.kv b{font-size:12px;color:var(--mute);display:block}
 .link{cursor:pointer;text-decoration:underline}[hidden]{display:none!important}
+.bar2{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:14px}
+@media(max-width:640px){.bar2{grid-template-columns:1fr 1fr}.bar2 input{grid-column:1/-1}}
+.rel{margin:0;padding-left:20px}.rel li{margin:3px 0}
+.qtext{font-size:17px;font-weight:600;margin:10px 0}
+.ans{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div><h1>DSA Tracker</h1><div class="sub">Java, JavaScript &amp; TypeScript solutions, notes, and revision list</div></div>
+    <div><h1>DSA Tracker</h1><div class="sub">Java, JavaScript &amp; TypeScript solutions, notes, interview questions and revision list</div></div>
     <div class="row"><button id="lock" title="Forget password on this device">Lock</button><button id="imp">Import</button><input type="file" id="impf" accept="application/json" hidden><button id="exp">Export</button><button class="p" id="add">+ Add problem</button></div>
   </header>
   <div id="mode"></div>
-  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button></div>
+  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button></div>
   <div id="pv">
   <div class="stats" id="stats"></div>
   <div class="bar">
@@ -80,6 +85,11 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
   <div id="list"><div class="empty">Loading…</div></div>
   </div>
   <div id="patv" hidden><div class="row" style="margin-bottom:10px"><button class="p" id="addp">+ Add pattern</button><span class="sub">Recognition cues and reusable templates for each pattern</span></div><div id="patl"></div></div>
+  <div id="intv" hidden>
+    <div class="row" style="margin-bottom:10px"><button class="p" id="rq">Random question</button><span class="sub" id="ic"></span></div>
+    <div class="bar2"><input id="iq" placeholder="Search questions, answers, problems…"><select id="ik"><option value="">All kinds</option><option>Follow-up</option><option>Concept</option><option>Complexity</option><option>Edge case</option><option>Trade-off</option></select><select id="it"></select></div>
+    <div id="il"></div>
+  </div>
 </div>
 <div id="ovr"></div>
 <script>
@@ -145,33 +155,63 @@ function codeTabs(o){
     box.replaceChildren(cur?h('pre',{},o[cur]):h('div',{class:'sub'},'No code saved yet.'))};
   show();return h('div',{},tabs,box)}
 
+const KINDS=['Follow-up','Concept','Complexity','Edge case','Trade-off'];
+const intAll=()=>P().flatMap(p=>(p.interview||[]).map(x=>({p,q:x.q,a:x.a,kind:x.kind||'Follow-up'})));
+function intMatch(x){
+  const q=$('#iq').value.toLowerCase(),k=$('#ik').value,t=$('#it').value;
+  if(k&&x.kind!==k)return false;if(t&&x.p.topic!==t)return false;
+  return !q||[x.q,x.a,x.p.title,x.p.pattern].join(' ').toLowerCase().includes(q)}
+function renderInt(){
+  const all=intAll(),tp=$('#it'),cur=tp.value;
+  const topics=[...new Set(all.map(x=>x.p.topic).filter(Boolean))].sort();
+  tp.replaceChildren(h('option',{value:''},'All topics'),...topics.map(t=>h('option',{value:t},t)));
+  tp.value=topics.includes(cur)?cur:'';
+  const res=all.filter(intMatch);
+  $('#ic').textContent=res.length+' of '+all.length+' questions';
+  $('#il').replaceChildren(...(res.length?res.map(x=>h('details',{},h('summary',{},x.q),
+    h('div',{class:'row',style:'margin:6px 0'},h('span',{class:'badge'},x.kind),h('span',{class:'badge link',onclick:()=>view(x.p.id)},x.p.title)),
+    h('p',{class:'n'},x.a))):[h('div',{class:'empty'},all.length?'No questions match these filters.':'No interview questions yet. Add them on a problem, or import a file that has them.')]));
+}
+function practice(){
+  const pool=intAll().filter(intMatch);
+  if(!pool.length){alert('No questions match the current filters.');return}
+  let cur;const body=h('div');
+  const show=rev=>body.replaceChildren(
+    h('div',{class:'row'},h('span',{class:'badge'},cur.kind),h('span',{class:'sub'},cur.p.title)),
+    h('p',{class:'qtext'},cur.q),
+    rev?h('div',{class:'ans'},h('p',{class:'n'},cur.a)):h('button',{class:'p',onclick:()=>show(true)},'Show answer'),
+    h('div',{class:'row',style:'margin-top:14px'},h('button',{onclick:next},'Next question'),h('button',{onclick:()=>view(cur.p.id)},'Open problem')));
+  const next=()=>{cur=pool[Math.floor(Math.random()*pool.length)];show(false)};
+  modal(h('div',{class:'row'},h('h1',{style:'flex:1'},'Practice'),h('button',{onclick:close},'Close')),body);next();
+}
+
 function render(){
   if(!ready)return;
-  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';
-  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';
+  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';$('#tInt').className=tab==='interview'?'on':'';
+  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';$('#intv').hidden=tab!=='interview';
   const A=P();
   const topics=[...new Set(A.map(i=>i.topic).filter(Boolean))].sort();
   const ft=$('#fTopic'),cur=ft.value;
   ft.replaceChildren(h('option',{value:''},'All topics'),...topics.map(t=>h('option',{value:t},t)));
   ft.value=topics.includes(cur)?cur:'';
   const n=s=>A.filter(i=>i.status===s).length;
-  $('#stats').replaceChildren(...[['Total',A.length],['Solved',n('Solved')],['To revisit',n('Revisit')],['Java',A.filter(i=>i.java).length],['JS',A.filter(i=>i.js).length],['TS',A.filter(i=>i.ts).length]]
+  $('#stats').replaceChildren(...[['Total',A.length],['Solved',n('Solved')],['To revisit',n('Revisit')],['Java',A.filter(i=>i.java).length],['JS',A.filter(i=>i.js).length],['TS',A.filter(i=>i.ts).length],['Interview Q&A',A.reduce((n,i)=>n+(i.interview||[]).length,0)]]
     .map(([l,v])=>h('div',{class:'stat'},h('b',{},v),h('span',{},l))));
   const q=$('#q').value.toLowerCase(),d=$('#fDiff').value,s=$('#fStat').value,l=$('#fLang').value,tp=ft.value;
   const res=A.filter(i=>{
     if(tp&&i.topic!==tp)return false;if(d&&i.difficulty!==d)return false;if(s&&i.status!==s)return false;
     if(l==='java'&&!i.java)return false;if(l==='js'&&!i.js)return false;if(l==='ts'&&!i.ts)return false;if(l==='both'&&!(i.java&&i.js))return false;
-    if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.ts,i.topic,i.pattern,i.cue,i.insight,(i.versions||[]).map(v=>[v.name,v.java,v.js,v.ts].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
+    if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.ts,i.topic,i.pattern,i.cue,i.insight,(i.interview||[]).map(x=>x.q+' '+x.a).join(' '),(i.related||[]).join(' '),(i.versions||[]).map(v=>[v.name,v.java,v.js,v.ts].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
     return true}).sort((a,b)=>(b.updated||0)-(a.updated||0));
   $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},A.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
-  renderPats();
+  renderPats();renderInt();
 }
 function card(i){
   return h('div',{class:'item',onclick:()=>view(i.id)},
     h('div',{class:'row'},h('span',{class:'t'},i.title),
       i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
       h('span',{class:'badge '+i.status},i.status||'Todo')),
-    h('div',{class:'row sub',style:'margin-top:4px'},i.pattern&&'◆ '+i.pattern,i.topic&&'· '+i.topic,i.java&&'· Java',i.js&&'· JS',i.ts&&'· TS',(i.versions||[]).length?'· '+(i.versions.length+1)+' approaches':null,i.trace?'· trace':null));
+    h('div',{class:'row sub',style:'margin-top:4px'},i.pattern&&'◆ '+i.pattern,i.topic&&'· '+i.topic,i.java&&'· Java',i.js&&'· JS',i.ts&&'· TS',(i.versions||[]).length?'· '+(i.versions.length+1)+' approaches':null,i.trace?'· trace':null,(i.interview||[]).length?'· '+i.interview.length+' Q&A':null));
 }
 function renderPats(){
   const A=P(),saved=Object.fromEntries(PR().map(p=>[p.title,p]));
@@ -195,6 +235,9 @@ function view(id){
   const vers=(i.versions||[]).length?h('div',{},...i.versions.map(v=>h('details',{},
     h('summary',{},(v.name||'Version')+((v.time||v.space)?` · ${v.time||'—'} time, ${v.space||'—'} space`:'')),
     (v.time||v.space)&&h('p',{class:'n'},`Time: ${v.time||'—'}   Space: ${v.space||'—'}`),v.note&&h('p',{class:'n'},v.note),codeTabs(v),v.trace&&h('div',{},h('h3',{},'Small dry run'),rich(v.trace))))):null;
+  const iqs=(i.interview||[]).length?h('div',{},...i.interview.map(x=>h('details',{},h('summary',{},x.q),
+    x.kind&&h('div',{style:'margin:6px 0'},h('span',{class:'badge'},x.kind)),h('p',{class:'n'},x.a)))):null;
+  const rel=(i.related||[]).length?h('ul',{class:'rel'},...i.related.map(r=>h('li',{},r))):null;
   modal(
     h('div',{class:'row'},h('h1',{style:'flex:1'},i.title),h('button',{onclick:close},'Close')),
     h('div',{class:'row',style:'margin:8px 0'},i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
@@ -207,6 +250,8 @@ function view(id){
     sec('Solution (final)',(i.java||i.js||i.ts)?codeTabs(i):null),
     sec('Alternate approaches',vers),
     sec('Trace (dry run)',(i.trace||i.traceInput)?h('div',{},i.traceInput&&h('p',{class:'n'},'Input: '+i.traceInput),rich(i.trace)):null),
+    sec('Interview questions',iqs),
+    sec('Related problems',rel),
     sec('Notes / mistakes',i.notes&&h('p',{class:'n'},i.notes)),
     h('div',{class:'row',style:'margin-top:18px'},h('button',{class:'p',onclick:()=>form(i)},'Edit'),
       h('button',{class:'d',onclick:async()=>{if(confirm('Delete this problem?')){await del(i.id);close()}}},'Delete'))
@@ -214,7 +259,7 @@ function view(id){
 }
 function form(i){
   const e=i||{id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:'Todo',difficulty:'Medium',created:Date.now()};
-  const F={},vs=[];
+  const F={},vs=[],qs=[];
   const fld=(k,lab,el,w)=>{F[k]=el;if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;else if(e[k]!=null)el.value=e[k];return h('div',{class:w?'w':''},h('label',{},lab),el)};
   const sel=(...o)=>h('select',{},...o.map(x=>h('option',{},x)));
   const ta=(r,code,ph)=>{const a={rows:r,placeholder:ph||''};if(code){a.class='code';a.spellcheck='false';a.onkeydown=tabKey}return h('textarea',a)};
@@ -227,6 +272,14 @@ function form(i){
       mk('note','Idea, and what it trades off',2),mk('trace','Small dry run: an input line, then a table like | i | x | and |---|---|',5,1),mk('java','Java',6,1),mk('js','JavaScript',6,1),mk('ts','TypeScript',6,1));
     vs.push(f);vbox.append(b)};
   (e.versions||[]).forEach(addV);
+  const qbox=h('div',{class:'w'});
+  const addQ=(v={})=>{
+    const f={q:h('input',{placeholder:'A question an interviewer might ask'}),kind:h('select',{},...KINDS.map(k=>h('option',{},k))),a:ta(3,0,'Short model answer')};
+    f.q.value=v.q||'';f.kind.value=v.kind||KINDS[0];f.a.value=v.a||'';f.kind.style.width='auto';
+    const b=h('div',{class:'vb'},h('div',{class:'row'},f.q,f.kind,h('button',{class:'d',onclick:()=>{b.remove();qs.splice(qs.indexOf(f),1)}},'Remove')),f.a);
+    qs.push(f);qbox.append(b)};
+  (e.interview||[]).forEach(addQ);
+  const relTa=ta(4,0,'142. Linked List Cycle II: find where the cycle starts');relTa.value=(e.related||[]).join('\n');
   modal(
     h('h1',{},i?'Edit problem':'Add problem'),
     h('div',{class:'f',style:'margin-top:12px'},
@@ -253,6 +306,9 @@ function form(i){
       h('h3',{},'Trace (dry run)'),
       fld('traceInput','Sample input',h('input',{placeholder:'nums = [2,7,11,15], target = 9'}),1),
       fld('trace','Paste a table like  | Step | i | map |  then rows',ta(8,1,'| Step | i | need | map |\n|---|---|---|---|\n| 1 | 0 | 7 | {} |'),1),
+      h('h3',{},'Interview questions (follow-ups, concepts, trade-offs)'),
+      qbox,h('div',{class:'w'},h('button',{onclick:()=>addQ()},'+ Add interview question')),
+      h('div',{class:'w'},h('label',{},'Related problems, one per line (e.g. 142. Linked List Cycle II: find where the cycle starts)'),relTa),
       h('h3',{},'Notes'),
       fld('notes','Notes, mistakes',ta(3),1)),
     h('datalist',{id:'tl'},...TOPICS.map(t=>h('option',{value:t}))),
@@ -262,6 +318,8 @@ function form(i){
         const o={...e};for(const k in F)o[k]=F[k].value.trim();
         if(!o.title){F.title.focus();return}
         o.versions=vs.map(f=>Object.fromEntries(Object.entries(f).map(([k,el])=>[k,el.value.trim()]))).filter(v=>v.name||v.java||v.js||v.ts);
+        o.interview=qs.map(f=>({q:f.q.value.trim(),kind:f.kind.value,a:f.a.value.trim()})).filter(x=>x.q);
+        o.related=relTa.value.split('\n').map(x=>x.trim()).filter(Boolean);
         await save(o);i?view(o.id):close();
       }},'Save'),h('button',{onclick:()=>i?view(i.id):close()},'Cancel'))
   );
@@ -307,7 +365,9 @@ $('#add').onclick=()=>form();
 $('#addp').onclick=()=>patForm();
 $('#tProb').onclick=()=>{tab='problems';render()};
 $('#tPat').onclick=()=>{tab='patterns';render()};
-['q','fTopic','fDiff','fStat','fLang'].forEach(id=>$('#'+id).addEventListener('input',render));
+$('#tInt').onclick=()=>{tab='interview';render()};
+$('#rq').onclick=practice;
+['q','fTopic','fDiff','fStat','fLang','iq','ik','it'].forEach(id=>$('#'+id).addEventListener('input',render));
 $('#exp').onclick=()=>{
   const u=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));
   const a=h('a',{href:u,download:'dsa-tracker-backup.json'});document.body.append(a);a.click();a.remove();URL.revokeObjectURL(u);

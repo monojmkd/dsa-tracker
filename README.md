@@ -32,3 +32,12 @@ See PROMPT.md for a prompt that makes Claude produce text you can paste straight
 
 ## TypeScript
 Every problem, version and pattern template now has a TypeScript box next to Java and JavaScript. Older entries without TS keep working.
+
+## Interview questions and related problems
+- Each problem has an **Interview questions** section: follow-ups, concept checks, complexity, edge cases and trade-offs, each with a short model answer. Click a question to see the answer.
+- **Related problems** lists the usual next problems for the same idea (title and reason).
+- The **Interview** tab collects every question from every problem. Filter by kind or topic, search, or press **Random question** to practise: it shows a question, you answer in your head, then press Show answer.
+- In the problem form, add questions with **+ Add interview question** and put related problems one per line.
+- Data shape (both optional, so old entries keep working): `interview: [{ q, a, kind }]` and `related: ["142. Linked List Cycle II: reason"]`. Kinds are Follow-up, Concept, Complexity, Edge case, Trade-off.
+- The database and API are unchanged: records are stored as JSON, so the new fields are saved automatically.
+- PROMPT.md is a ready-made prompt that makes Claude return a complete import file in this shape, interview questions included.
