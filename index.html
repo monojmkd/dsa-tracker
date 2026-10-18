@@ -64,6 +64,8 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .qtext{font-size:17px;font-weight:600;margin:10px 0}
 .ans{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
 .bar4{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px}.bar4 input{grid-column:1/-1}
+.rc-Red{color:var(--hard);border-color:var(--hard)}.rc-Yellow{color:var(--med);border-color:var(--med)}.rc-Green{color:var(--easy);border-color:var(--easy)}
+.due{color:var(--hard);border-color:var(--hard);font-weight:600}
 </style>
 </head>
 <body>
@@ -73,7 +75,7 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
     <div class="row"><button id="lock" title="Forget password on this device">Lock</button><button id="imp">Import</button><input type="file" id="impf" accept="application/json" hidden><button id="exp">Export</button><button class="p" id="add">+ Add problem</button></div>
   </header>
   <div id="mode"></div>
-  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button><button id="tRel">Related</button></div>
+  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button><button id="tRel">Related</button><button id="tRev">Revise</button></div>
   <div id="pv">
   <div class="stats" id="stats"></div>
   <div class="bar">
@@ -98,6 +100,14 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
       <select id="xsrc"></select><select id="xt"></select>
       <select id="xo"><option value="refs">Most referenced first</option><option value="num">By problem number</option></select></div>
     <div id="xl"></div>
+  </div>
+  <div id="revv" hidden>
+    <div class="sub" id="rvc" style="margin-bottom:10px"></div>
+    <div class="bar4"><input id="rvq" placeholder="Search problems to revise…">
+      <select id="rvs"><option value="due" selected>Due now</option><option value="soon">Next 7 days</option><option value="later">Later</option><option value="none">Not scheduled</option><option value="">All</option></select>
+      <select id="rvr"><option value="">Any recall level</option><option>Red</option><option>Yellow</option><option>Green</option><option value="none">Not rated</option></select>
+      <select id="rvm"><option value="">Any mistake type</option><option>Concept</option><option>Logic</option><option>Syntax</option><option>Edge Case</option></select></div>
+    <div id="rvl"></div>
   </div>
 </div>
 <div id="ovr"></div>
@@ -194,6 +204,117 @@ function practice(){
   modal(h('div',{class:'row'},h('h1',{style:'flex:1'},'Practice'),h('button',{onclick:close},'Close')),body);next();
 }
 
+const REVF=['lastRevised','nextRevision','recall','solvedWithoutHelp','timeTaken','mistakeType','mentalModel'];
+const RECALLS=['Red','Yellow','Green'],MISTAKES=['Concept','Logic','Syntax','Edge Case'],MODELS=['Yes','Partial','No'];
+const RED_DAYS=1,YELLOW_DAYS=3,GREEN_STEPS=[7,14,30,60];
+const pad2=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+const today=()=>ymd(new Date());
+const isD=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'');
+const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return ymd(d)};
+const diffDays=(a,b)=>Math.round((parseD(a)-parseD(b))/864e5);
+function nextFrom(date,recall,history){
+  if(recall==='Red')return addDays(date,RED_DAYS);
+  if(recall==='Yellow')return addDays(date,YELLOW_DAYS);
+  let streak=0;for(let k=history.length-1;k>=0&&history[k].recall==='Green';k--)streak++;
+  return addDays(date,GREEN_STEPS[Math.min(streak,GREEN_STEPS.length-1)]);
+}
+const dueDays=i=>isD(i.nextRevision)?diffDays(i.nextRevision,today()):null;
+const dueText=n=>n===null?'':n<0?'Overdue by '+(-n)+(n===-1?' day':' days'):n===0?'Due today':'Due in '+n+(n===1?' day':' days');
+const revCat=i=>{const n=dueDays(i);return n===null?'none':n<=0?'due':n<=7?'soon':'later'};
+const dueBadge=i=>{const n=dueDays(i);return n!==null&&n<=0?h('span',{class:'badge due'},n<0?'Overdue':'Due today'):null};
+const stripRev=o=>{REVF.forEach(k=>{if(o[k]===''||o[k]==null||(typeof o[k]==='number'&&isNaN(o[k])))delete o[k]});return o};
+function applyLatest(i){
+  const r=(i.revisions||[]).slice(-1)[0];
+  REVF.forEach(k=>delete i[k]);
+  if(!r)return;
+  i.lastRevised=r.date;i.recall=r.recall;
+  if(r.solvedWithoutHelp)i.solvedWithoutHelp=r.solvedWithoutHelp;
+  if(r.timeTaken!==undefined)i.timeTaken=r.timeTaken;
+  if(r.mistakeType)i.mistakeType=r.mistakeType;
+  if(r.mentalModel)i.mentalModel=r.mentalModel;
+}
+function revBlock(i){
+  const n=dueDays(i),hist=i.revisions||[];
+  const has=REVF.some(k=>i[k]!==undefined&&i[k]!=='');
+  const kv=(l,v)=>(v===undefined||v==='')?null:h('div',{},h('b',{},l),h('p',{class:'n'},String(v)));
+  const top=has?h('div',{},
+    i.recall&&h('div',{class:'row',style:'margin-bottom:8px'},h('span',{class:'badge rc-'+i.recall},'Recall: '+i.recall),n!==null&&h('span',{class:'badge'+(n<=0?' due':'')},dueText(n))),
+    h('div',{class:'f kv'},kv('Last revised',i.lastRevised),kv('Next revision',i.nextRevision),kv('Solved without help',i.solvedWithoutHelp),
+      kv('Time taken',(i.timeTaken!==undefined&&i.timeTaken!=='')?i.timeTaken+' min':''),kv('Mistake type',i.mistakeType),kv('Mental model recalled',i.mentalModel))
+  ):h('p',{class:'n sub'},'Not revised yet.');
+  const tbl=hist.length?h('div',{style:'overflow-x:auto;margin-top:10px'},h('table',{},
+    h('thead',{},h('tr',{},...['Date','Recall','Without help','Time (min)','Mistake','Mental model'].map(c=>h('th',{},c)))),
+    h('tbody',{},...[...hist].reverse().map(r=>h('tr',{},h('td',{},r.date||''),h('td',{},r.recall?h('span',{class:'badge rc-'+r.recall},r.recall):''),
+      h('td',{},r.solvedWithoutHelp||''),h('td',{},r.timeTaken!==undefined?String(r.timeTaken):''),h('td',{},r.mistakeType||''),h('td',{},r.mentalModel||'')))))):null;
+  return h('div',{},top,tbl,h('div',{class:'row',style:'margin-top:10px'},
+    h('button',{class:'p',onclick:()=>logRev(i.id)},'Log a revision'),hist.length?h('button',{onclick:()=>undoRev(i.id)},'Undo last revision'):null));
+}
+function logRev(id,fromList){
+  const i=items.find(x=>x.id===id);if(!i)return;
+  const hist=i.revisions||[],F={};let manual=false;
+  const back=()=>fromList?close():view(id);
+  const selB=a=>h('select',{},h('option',{value:''},'—'),...a.map(x=>h('option',{},x)));
+  const fld=(k,lab,el)=>{F[k]=el;return h('div',{},h('label',{},lab),el)};
+  const date=h('input',{type:'date'});date.value=today();
+  const next=h('input',{type:'date'});
+  const recompute=()=>{if(!manual&&F.recall.value&&isD(date.value))next.value=nextFrom(date.value,F.recall.value,hist)};
+  modal(
+    h('h1',{},'Log a revision'),h('div',{class:'sub'},i.title),
+    h('div',{class:'note',style:'margin-top:10px'},'Next revision is suggested from the recall level: Red 1 day, Yellow 3 days, Green 7 days, then 14, 30 and 60 for repeated Greens. You can change the date.'),
+    h('div',{class:'f',style:'margin-top:4px'},
+      fld('date','Date of this attempt',date),
+      fld('recall','Recall level *',selB(RECALLS)),
+      fld('help','Solved without help',selB(['Yes','No'])),
+      fld('time','Time taken (minutes)',h('input',{type:'number',min:'0',placeholder:'e.g. 15'})),
+      fld('mistake','Mistake type',selB(MISTAKES)),
+      fld('model','Mental model recalled',selB(MODELS)),
+      fld('next','Next revision',next)),
+    h('div',{class:'row',style:'margin-top:16px'},
+      h('button',{class:'p',onclick:async()=>{
+        if(!F.recall.value){F.recall.focus();return}
+        if(!isD(date.value)){date.focus();return}
+        const rev={date:date.value,recall:F.recall.value,solvedWithoutHelp:F.help.value,timeTaken:F.time.value===''?'':Number(F.time.value),mistakeType:F.mistake.value,mentalModel:F.model.value};
+        Object.keys(rev).forEach(k=>{if(rev[k]===''||(typeof rev[k]==='number'&&isNaN(rev[k])))delete rev[k]});
+        i.revisions=[...hist,rev];applyLatest(i);
+        if(isD(next.value))i.nextRevision=next.value;
+        await save(i);back();}},'Save revision'),
+      h('button',{onclick:back},'Cancel')));
+  F.recall.addEventListener('input',recompute);date.addEventListener('input',recompute);next.addEventListener('input',()=>{manual=true});
+}
+async function undoRev(id){
+  const i=items.find(x=>x.id===id);if(!i||!(i.revisions||[]).length)return;
+  if(!confirm('Remove the latest revision entry and go back to the previous one?'))return;
+  i.revisions=i.revisions.slice(0,-1);applyLatest(i);
+  const r=i.revisions.slice(-1)[0];if(r)i.nextRevision=nextFrom(r.date,r.recall,i.revisions.slice(0,-1));
+  if(!i.revisions.length)delete i.revisions;
+  await save(i);view(id);
+}
+function revRow(i){
+  const n=dueDays(i),na=(i.revisions||[]).length;
+  return h('div',{class:'item',style:'cursor:default'},
+    h('div',{class:'row'},h('span',{class:'t'},i.title),i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
+      i.recall?h('span',{class:'badge rc-'+i.recall},i.recall):h('span',{class:'badge'},'Not rated'),
+      n!==null?h('span',{class:'badge'+(n<=0?' due':'')},dueText(n)):h('span',{class:'badge'},'Not scheduled')),
+    h('div',{class:'row sub',style:'margin-top:4px'},i.lastRevised?'Last revised '+i.lastRevised:'Never revised',i.nextRevision&&'· Next '+i.nextRevision,
+      i.mistakeType&&'· Mistake: '+i.mistakeType,i.mentalModel&&'· Mental model: '+i.mentalModel,na?'· '+na+(na===1?' attempt':' attempts'):null),
+    h('div',{class:'row',style:'margin-top:8px'},h('button',{class:'p',onclick:()=>logRev(i.id,true)},'Log a revision'),h('button',{onclick:()=>view(i.id)},'Open')));
+}
+function renderRevise(){
+  const A=P(),q=$('#rvq').value.toLowerCase(),sf=$('#rvs').value,rf=$('#rvr').value,mf=$('#rvm').value;
+  const cnt={due:0,soon:0,later:0,none:0};A.forEach(i=>cnt[revCat(i)]++);
+  $('#rvc').textContent=cnt.due+' due now · '+cnt.soon+' in the next 7 days · '+cnt.later+' later · '+cnt.none+' not scheduled';
+  $('#tRev').textContent='Revise'+(cnt.due?' ('+cnt.due+')':'');
+  const res=A.filter(i=>{
+    if(sf&&revCat(i)!==sf)return false;
+    if(rf==='none'){if(i.recall)return false}else if(rf&&i.recall!==rf)return false;
+    if(mf&&i.mistakeType!==mf)return false;
+    return !q||[i.title,i.pattern,i.topic].join(' ').toLowerCase().includes(q)})
+   .sort((a,b)=>(a.nextRevision||'9999-99-99').localeCompare(b.nextRevision||'9999-99-99')||(parseInt(a.title)||0)-(parseInt(b.title)||0));
+  $('#rvl').replaceChildren(...(res.length?res.map(revRow):[h('div',{class:'empty'},sf==='due'?'Nothing is due. Log a revision on a problem to schedule its next one.':'No problems match these filters.')]));
+}
+
 const relParse=r=>{const m=/^\s*(\d+)\.\s*([^:]+?)\s*(?::\s*(.*))?$/.exec(r);if(m)return{num:m[1],title:m[2],why:m[3]||''};const t=String(r),k=t.indexOf(':');return k>0?{num:'',title:t.slice(0,k).trim(),why:t.slice(k+1).trim()}:{num:'',title:t.trim(),why:''}};
 const relHave=x=>P().find(p=>x.num?(p.id==='lc-'+x.num||(p.title||'').startsWith(x.num+'.')):(p.title||'').toLowerCase()===x.title.toLowerCase());
 function relAll(){
@@ -236,30 +357,30 @@ function renderRel(){
 
 function render(){
   if(!ready)return;
-  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';$('#tInt').className=tab==='interview'?'on':'';$('#tRel').className=tab==='related'?'on':'';
-  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';$('#intv').hidden=tab!=='interview';$('#relv').hidden=tab!=='related';
+  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';$('#tInt').className=tab==='interview'?'on':'';$('#tRel').className=tab==='related'?'on':'';$('#tRev').className=tab==='revise'?'on':'';
+  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';$('#intv').hidden=tab!=='interview';$('#relv').hidden=tab!=='related';$('#revv').hidden=tab!=='revise';
   const A=P();
   const topics=[...new Set(A.map(i=>i.topic).filter(Boolean))].sort();
   const ft=$('#fTopic'),cur=ft.value;
   ft.replaceChildren(h('option',{value:''},'All topics'),...topics.map(t=>h('option',{value:t},t)));
   ft.value=topics.includes(cur)?cur:'';
   const n=s=>A.filter(i=>i.status===s).length;
-  $('#stats').replaceChildren(...[['Total',A.length],['Solved',n('Solved')],['To revisit',n('Revisit')],['Java',A.filter(i=>i.java).length],['JS',A.filter(i=>i.js).length],['TS',A.filter(i=>i.ts).length],['Interview Q&A',A.reduce((n,i)=>n+(i.interview||[]).length,0)]]
+  $('#stats').replaceChildren(...[['Total',A.length],['Solved',n('Solved')],['To revisit',n('Revisit')],['Java',A.filter(i=>i.java).length],['JS',A.filter(i=>i.js).length],['TS',A.filter(i=>i.ts).length],['Interview Q&A',A.reduce((n,i)=>n+(i.interview||[]).length,0)],['Due to revise',A.filter(i=>{const n=dueDays(i);return n!==null&&n<=0}).length]]
     .map(([l,v])=>h('div',{class:'stat'},h('b',{},v),h('span',{},l))));
   const q=$('#q').value.toLowerCase(),d=$('#fDiff').value,s=$('#fStat').value,l=$('#fLang').value,tp=ft.value;
   const res=A.filter(i=>{
     if(tp&&i.topic!==tp)return false;if(d&&i.difficulty!==d)return false;if(s&&i.status!==s)return false;
     if(l==='java'&&!i.java)return false;if(l==='js'&&!i.js)return false;if(l==='ts'&&!i.ts)return false;if(l==='both'&&!(i.java&&i.js))return false;
-    if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.ts,i.topic,i.pattern,i.cue,i.insight,(i.interview||[]).map(x=>x.q+' '+x.a).join(' '),(i.related||[]).join(' '),(i.versions||[]).map(v=>[v.name,v.java,v.js,v.ts].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
+    if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.ts,i.topic,i.pattern,i.cue,i.insight,i.mistakeType,i.recall,(i.interview||[]).map(x=>x.q+' '+x.a).join(' '),(i.related||[]).join(' '),(i.versions||[]).map(v=>[v.name,v.java,v.js,v.ts].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
     return true}).sort((a,b)=>(b.updated||0)-(a.updated||0));
   $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},A.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
-  renderPats();renderInt();renderRel();
+  renderPats();renderInt();renderRel();renderRevise();
 }
 function card(i){
   return h('div',{class:'item',onclick:()=>view(i.id)},
     h('div',{class:'row'},h('span',{class:'t'},i.title),
       i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
-      h('span',{class:'badge '+i.status},i.status||'Todo')),
+      h('span',{class:'badge '+i.status},i.status||'Todo'),i.recall&&h('span',{class:'badge rc-'+i.recall},i.recall),dueBadge(i)),
     h('div',{class:'row sub',style:'margin-top:4px'},i.pattern&&'◆ '+i.pattern,i.topic&&'· '+i.topic,i.java&&'· Java',i.js&&'· JS',i.ts&&'· TS',(i.versions||[]).length?'· '+(i.versions.length+1)+' approaches':null,i.trace?'· trace':null,(i.interview||[]).length?'· '+i.interview.length+' Q&A':null));
 }
 function renderPats(){
@@ -284,6 +405,7 @@ function view(id){
   const vers=(i.versions||[]).length?h('div',{},...i.versions.map(v=>h('details',{},
     h('summary',{},(v.name||'Version')+((v.time||v.space)?` · ${v.time||'—'} time, ${v.space||'—'} space`:'')),
     (v.time||v.space)&&h('p',{class:'n'},`Time: ${v.time||'—'}   Space: ${v.space||'—'}`),v.note&&h('p',{class:'n'},v.note),codeTabs(v),v.trace&&h('div',{},h('h3',{},'Small dry run'),rich(v.trace))))):null;
+  const revSec=revBlock(i);
   const iqs=(i.interview||[]).length?h('div',{},...i.interview.map(x=>h('details',{},h('summary',{},x.q),
     x.kind&&h('div',{style:'margin:6px 0'},h('span',{class:'badge'},x.kind)),h('p',{class:'n'},x.a)))):null;
   const rel=(i.related||[]).length?h('ul',{class:'rel'},...i.related.map(r=>{const hv=relHave(relParse(r));return h('li',{},r,hv?h('span',{class:'badge link',style:'margin-left:6px',onclick:()=>view(hv.id)},hv.status==='Solved'?'Solved ✓':'In tracker'):null)})):null;
@@ -293,6 +415,7 @@ function view(id){
       i.pattern&&h('span',{class:'badge link',onclick:()=>patView(i.pattern)},'◆ '+i.pattern),i.topic&&h('span',{class:'badge'},i.topic),st,
       i.url&&h('a',{href:i.url,target:'_blank',rel:'noopener'},'Open problem ↗')),
     i.tags&&h('div',{class:'sub'},'Tags: '+i.tags),
+    sec('Revision',revSec),
     sec('Next time: how to approach it',next),
     (i.time||i.space)?sec('Complexity (final solution)',h('p',{class:'n'},`Time: ${i.time||'—'}   Space: ${i.space||'—'}`)):null,
     sec('Approach',i.approach&&h('p',{class:'n'},i.approach)),
@@ -311,6 +434,7 @@ function form(i,pre){
   const F={},vs=[],qs=[];
   const fld=(k,lab,el,w)=>{F[k]=el;if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;else if(e[k]!=null)el.value=e[k];return h('div',{class:w?'w':''},h('label',{},lab),el)};
   const sel=(...o)=>h('select',{},...o.map(x=>h('option',{},x)));
+  const selB=(...o)=>h('select',{},h('option',{value:''},'—'),...o.map(x=>h('option',{},x)));
   const ta=(r,code,ph)=>{const a={rows:r,placeholder:ph||''};if(code){a.class='code';a.spellcheck='false';a.onkeydown=tabKey}return h('textarea',a)};
   const vbox=h('div',{class:'w'});
   const addV=(v={})=>{
@@ -358,6 +482,14 @@ function form(i,pre){
       h('h3',{},'Interview questions (follow-ups, concepts, trade-offs)'),
       qbox,h('div',{class:'w'},h('button',{onclick:()=>addQ()},'+ Add interview question')),
       h('div',{class:'w'},h('label',{},'Related problems, one per line (e.g. 142. Linked List Cycle II: find where the cycle starts)'),relTa),
+      h('h3',{},'Revision (the Log a revision button on the problem page fills these in for you)'),
+      fld('lastRevised','Last revised',h('input',{type:'date'})),
+      fld('nextRevision','Next revision',h('input',{type:'date'})),
+      fld('recall','Recall level',selB('Red','Yellow','Green')),
+      fld('solvedWithoutHelp','Solved without help',selB('Yes','No')),
+      fld('timeTaken','Time taken (minutes)',h('input',{type:'number',min:'0'})),
+      fld('mistakeType','Mistake type',selB(...MISTAKES)),
+      fld('mentalModel','Mental model recalled',selB(...MODELS)),
       h('h3',{},'Notes'),
       fld('notes','Notes, mistakes',ta(3),1)),
     h('datalist',{id:'tl'},...TOPICS.map(t=>h('option',{value:t}))),
@@ -369,6 +501,8 @@ function form(i,pre){
         o.versions=vs.map(f=>Object.fromEntries(Object.entries(f).map(([k,el])=>[k,el.value.trim()]))).filter(v=>v.name||v.java||v.js||v.ts);
         o.interview=qs.map(f=>({q:f.q.value.trim(),kind:f.kind.value,a:f.a.value.trim()})).filter(x=>x.q);
         o.related=relTa.value.split('\n').map(x=>x.trim()).filter(Boolean);
+        if(o.timeTaken!==undefined&&o.timeTaken!=='')o.timeTaken=Number(o.timeTaken);
+        stripRev(o);
         await save(o);i?view(o.id):close();
       }},'Save'),h('button',{onclick:()=>i?view(i.id):close()},'Cancel'))
   );
@@ -416,8 +550,9 @@ $('#tProb').onclick=()=>{tab='problems';render()};
 $('#tPat').onclick=()=>{tab='patterns';render()};
 $('#tInt').onclick=()=>{tab='interview';render()};
 $('#tRel').onclick=()=>{tab='related';render()};
+$('#tRev').onclick=()=>{tab='revise';render()};
 $('#rq').onclick=practice;
-['q','fTopic','fDiff','fStat','fLang','iq','ik','it','xq','xs','xsrc','xt','xo'].forEach(id=>$('#'+id).addEventListener('input',render));
+['q','fTopic','fDiff','fStat','fLang','iq','ik','it','xq','xs','xsrc','xt','xo','rvq','rvs','rvr','rvm'].forEach(id=>$('#'+id).addEventListener('input',render));
 $('#exp').onclick=()=>{
   const u=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));
   const a=h('a',{href:u,download:'dsa-tracker-backup.json'});document.body.append(a);a.click();a.remove();URL.revokeObjectURL(u);

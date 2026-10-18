@@ -50,3 +50,22 @@ Every problem, version and pattern template now has a TypeScript box next to Jav
 - A related problem counts as in the tracker when a problem with that number exists (id lc-<number> or a title starting with the number).
 - On a problem page, related problems you already have show a "Solved" or "In tracker" badge you can click to open them.
 - No data changes: the tab is built from the existing `related` lists.
+
+## Revision tracking
+Seven fields on every problem, all optional:
+| Field | Values |
+|---|---|
+| Last Revised | date of the latest attempt |
+| Next Revision | date the next attempt is scheduled |
+| Recall Level | Red / Yellow / Green |
+| Solved Without Help | Yes / No |
+| Time Taken | minutes |
+| Mistake Type | Concept / Logic / Syntax / Edge Case |
+| Mental Model Recalled | Yes / Partial / No |
+
+- **Log a revision** (on the problem page, or from the Revise tab) records one attempt. It is added to the problem's `revisions` history and the seven fields above are set to that attempt's values, so they always show the latest one. **Undo last revision** removes the newest attempt and goes back to the one before.
+- **Next revision is suggested** from the recall level: Red = 1 day, Yellow = 3 days, Green = 7 days, then 14, 30 and 60 days for repeated Greens in a row (a Red or Yellow resets the streak). Change the date in the dialog if you want. The intervals are constants (`RED_DAYS`, `YELLOW_DAYS`, `GREEN_STEPS`) near the top of the script if you want to tune them.
+- You can also edit the seven fields directly in the problem form. That does not touch the attempt history.
+- **Revise tab**: problems due now (oldest first, with how overdue they are), the next 7 days, later, or not scheduled. Filter by recall level and mistake type, and search. The tab label shows how many are due, and the top counts include **Due to revise**.
+- Problem cards show the recall colour and an Overdue / Due today badge.
+- Data: `lastRevised`, `nextRevision` (YYYY-MM-DD), `recall`, `solvedWithoutHelp`, `timeTaken` (number), `mistakeType`, `mentalModel`, and `revisions: [{ date, recall, solvedWithoutHelp, timeTaken, mistakeType, mentalModel }]`. Empty fields are not stored. The database and API are unchanged.

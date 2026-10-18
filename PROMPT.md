@@ -62,6 +62,8 @@ Rules:
 5. Dry runs must be correct step by step. Use a small input, and show the values that change.
 6. The code fields are JSON strings: use \n for new lines and escape quotes and backslashes.
 7. If I give several problems, return several objects in the same array.
+8. Do not include revision fields (lastRevised, nextRevision, recall, solvedWithoutHelp, timeTaken,
+   mistakeType, mentalModel, revisions). The tracker fills those in when I log a revision.
 
 Problem: <number and name>
 
