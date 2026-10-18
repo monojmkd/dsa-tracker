@@ -63,6 +63,7 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .rel{margin:0;padding-left:20px}.rel li{margin:3px 0}
 .qtext{font-size:17px;font-weight:600;margin:10px 0}
 .ans{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
+.bar4{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px}.bar4 input{grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -72,7 +73,7 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
     <div class="row"><button id="lock" title="Forget password on this device">Lock</button><button id="imp">Import</button><input type="file" id="impf" accept="application/json" hidden><button id="exp">Export</button><button class="p" id="add">+ Add problem</button></div>
   </header>
   <div id="mode"></div>
-  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button></div>
+  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button><button id="tRel">Related</button></div>
   <div id="pv">
   <div class="stats" id="stats"></div>
   <div class="bar">
@@ -89,6 +90,14 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
     <div class="row" style="margin-bottom:10px"><button class="p" id="rq">Random question</button><span class="sub" id="ic"></span></div>
     <div class="bar2"><input id="iq" placeholder="Search questions, answers, problems…"><select id="ik"><option value="">All kinds</option><option>Follow-up</option><option>Concept</option><option>Complexity</option><option>Edge case</option><option>Trade-off</option></select><select id="it"></select></div>
     <div id="il"></div>
+  </div>
+  <div id="relv" hidden>
+    <div class="sub" id="xc" style="margin-bottom:10px"></div>
+    <div class="bar4"><input id="xq" placeholder="Search related problems, reasons, source problems…">
+      <select id="xs"><option value="todo" selected>Not solved yet</option><option value="">All</option><option value="solved">Already solved</option></select>
+      <select id="xsrc"></select><select id="xt"></select>
+      <select id="xo"><option value="refs">Most referenced first</option><option value="num">By problem number</option></select></div>
+    <div id="xl"></div>
   </div>
 </div>
 <div id="ovr"></div>
@@ -185,10 +194,50 @@ function practice(){
   modal(h('div',{class:'row'},h('h1',{style:'flex:1'},'Practice'),h('button',{onclick:close},'Close')),body);next();
 }
 
+const relParse=r=>{const m=/^\s*(\d+)\.\s*([^:]+?)\s*(?::\s*(.*))?$/.exec(r);if(m)return{num:m[1],title:m[2],why:m[3]||''};const t=String(r),k=t.indexOf(':');return k>0?{num:'',title:t.slice(0,k).trim(),why:t.slice(k+1).trim()}:{num:'',title:t.trim(),why:''}};
+const relHave=x=>P().find(p=>x.num?(p.id==='lc-'+x.num||(p.title||'').startsWith(x.num+'.')):(p.title||'').toLowerCase()===x.title.toLowerCase());
+function relAll(){
+  const map=new Map();
+  P().forEach(p=>(p.related||[]).forEach(r=>{const x=relParse(r),key=x.num||x.title.toLowerCase();
+    let e=map.get(key);if(!e){e={key,num:x.num,title:x.title,refs:[]};map.set(key,e)}
+    e.refs.push({p,why:x.why})}));
+  return [...map.values()].map(e=>({...e,have:relHave(e)}));
+}
+const relSolved=e=>!!e.have&&e.have.status==='Solved';
+function relFilter(e){
+  const q=$('#xq').value.toLowerCase(),st=$('#xs').value,src=$('#xsrc').value,tp=$('#xt').value;
+  if(st==='todo'&&relSolved(e))return false;if(st==='solved'&&!relSolved(e))return false;
+  if(src&&!e.refs.some(r=>r.p.id===src))return false;
+  if(tp&&!e.refs.some(r=>r.p.topic===tp))return false;
+  return !q||[e.title,e.num,e.refs.map(r=>r.p.title+' '+r.why).join(' ')].join(' ').toLowerCase().includes(q)}
+function relRow(e){
+  const st=e.have?(e.have.status||'Todo'):null;
+  const pre={title:(e.num?e.num+'. ':'')+e.title,status:'Todo'};if(e.num)pre.id='lc-'+e.num;
+  return h('div',{class:'item',style:'cursor:default'},
+    h('div',{class:'row'},h('span',{class:'t'},(e.num?e.num+'. ':'')+e.title),
+      h('span',{class:'badge'},'from '+e.refs.length+(e.refs.length===1?' problem':' problems')),
+      st?h('span',{class:'badge '+st},st==='Solved'?'Solved ✓':'In tracker: '+st):h('span',{class:'badge'},'Not in tracker')),
+    h('details',{style:'margin:8px 0 0'},h('summary',{},'Why it is related'),
+      ...e.refs.map(r=>h('p',{class:'n',style:'margin:4px 0'},h('span',{class:'link',onclick:()=>view(r.p.id)},r.p.title),r.why?': '+r.why:''))),
+    h('div',{class:'row',style:'margin-top:8px'},
+      e.have?h('button',{onclick:()=>view(e.have.id)},'Open in tracker'):h('button',{class:'p',onclick:()=>form(null,pre)},'Add to tracker as Todo'),
+      h('a',{href:'https://leetcode.com/problemset/?search='+encodeURIComponent(e.title),target:'_blank',rel:'noopener'},'Find on LeetCode ↗')));
+}
+function renderRel(){
+  const all=relAll(),srcs=P().filter(p=>(p.related||[]).length).sort((a,b)=>(parseInt(a.title)||0)-(parseInt(b.title)||0));
+  const ss=$('#xsrc'),cs=ss.value;ss.replaceChildren(h('option',{value:''},'Related to: any problem'),...srcs.map(p=>h('option',{value:p.id},p.title)));ss.value=srcs.some(p=>p.id===cs)?cs:'';
+  const ts=$('#xt'),ct=ts.value,topics=[...new Set(srcs.map(p=>p.topic).filter(Boolean))].sort();
+  ts.replaceChildren(h('option',{value:''},'Any topic'),...topics.map(t=>h('option',{value:t},t)));ts.value=topics.includes(ct)?ct:'';
+  const num=e=>+e.num||1e9,so=$('#xo').value;
+  const res=all.filter(relFilter).sort(so==='num'?(a,b)=>num(a)-num(b):(a,b)=>b.refs.length-a.refs.length||num(a)-num(b));
+  $('#xc').textContent=res.length+' shown · '+all.length+' related problems from '+srcs.length+' of your problems · '+all.filter(e=>!relSolved(e)).length+' not solved yet';
+  $('#xl').replaceChildren(...(res.length?res.map(relRow):[h('div',{class:'empty'},all.length?'No related problems match these filters.':'No related problems yet. They appear here once your problems list related problems.')]));
+}
+
 function render(){
   if(!ready)return;
-  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';$('#tInt').className=tab==='interview'?'on':'';
-  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';$('#intv').hidden=tab!=='interview';
+  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';$('#tInt').className=tab==='interview'?'on':'';$('#tRel').className=tab==='related'?'on':'';
+  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';$('#intv').hidden=tab!=='interview';$('#relv').hidden=tab!=='related';
   const A=P();
   const topics=[...new Set(A.map(i=>i.topic).filter(Boolean))].sort();
   const ft=$('#fTopic'),cur=ft.value;
@@ -204,7 +253,7 @@ function render(){
     if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.ts,i.topic,i.pattern,i.cue,i.insight,(i.interview||[]).map(x=>x.q+' '+x.a).join(' '),(i.related||[]).join(' '),(i.versions||[]).map(v=>[v.name,v.java,v.js,v.ts].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
     return true}).sort((a,b)=>(b.updated||0)-(a.updated||0));
   $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},A.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
-  renderPats();renderInt();
+  renderPats();renderInt();renderRel();
 }
 function card(i){
   return h('div',{class:'item',onclick:()=>view(i.id)},
@@ -237,7 +286,7 @@ function view(id){
     (v.time||v.space)&&h('p',{class:'n'},`Time: ${v.time||'—'}   Space: ${v.space||'—'}`),v.note&&h('p',{class:'n'},v.note),codeTabs(v),v.trace&&h('div',{},h('h3',{},'Small dry run'),rich(v.trace))))):null;
   const iqs=(i.interview||[]).length?h('div',{},...i.interview.map(x=>h('details',{},h('summary',{},x.q),
     x.kind&&h('div',{style:'margin:6px 0'},h('span',{class:'badge'},x.kind)),h('p',{class:'n'},x.a)))):null;
-  const rel=(i.related||[]).length?h('ul',{class:'rel'},...i.related.map(r=>h('li',{},r))):null;
+  const rel=(i.related||[]).length?h('ul',{class:'rel'},...i.related.map(r=>{const hv=relHave(relParse(r));return h('li',{},r,hv?h('span',{class:'badge link',style:'margin-left:6px',onclick:()=>view(hv.id)},hv.status==='Solved'?'Solved ✓':'In tracker'):null)})):null;
   modal(
     h('div',{class:'row'},h('h1',{style:'flex:1'},i.title),h('button',{onclick:close},'Close')),
     h('div',{class:'row',style:'margin:8px 0'},i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
@@ -257,8 +306,8 @@ function view(id){
       h('button',{class:'d',onclick:async()=>{if(confirm('Delete this problem?')){await del(i.id);close()}}},'Delete'))
   );
 }
-function form(i){
-  const e=i||{id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:'Todo',difficulty:'Medium',created:Date.now()};
+function form(i,pre){
+  const e=i||{id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:'Todo',difficulty:'Medium',created:Date.now(),...(pre||{})};
   const F={},vs=[],qs=[];
   const fld=(k,lab,el,w)=>{F[k]=el;if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;else if(e[k]!=null)el.value=e[k];return h('div',{class:w?'w':''},h('label',{},lab),el)};
   const sel=(...o)=>h('select',{},...o.map(x=>h('option',{},x)));
@@ -366,8 +415,9 @@ $('#addp').onclick=()=>patForm();
 $('#tProb').onclick=()=>{tab='problems';render()};
 $('#tPat').onclick=()=>{tab='patterns';render()};
 $('#tInt').onclick=()=>{tab='interview';render()};
+$('#tRel').onclick=()=>{tab='related';render()};
 $('#rq').onclick=practice;
-['q','fTopic','fDiff','fStat','fLang','iq','ik','it'].forEach(id=>$('#'+id).addEventListener('input',render));
+['q','fTopic','fDiff','fStat','fLang','iq','ik','it','xq','xs','xsrc','xt','xo'].forEach(id=>$('#'+id).addEventListener('input',render));
 $('#exp').onclick=()=>{
   const u=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));
   const a=h('a',{href:u,download:'dsa-tracker-backup.json'});document.body.append(a);a.click();a.remove();URL.revokeObjectURL(u);

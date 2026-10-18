@@ -41,3 +41,12 @@ Every problem, version and pattern template now has a TypeScript box next to Jav
 - Data shape (both optional, so old entries keep working): `interview: [{ q, a, kind }]` and `related: ["142. Linked List Cycle II: reason"]`. Kinds are Follow-up, Concept, Complexity, Edge case, Trade-off.
 - The database and API are unchanged: records are stored as JSON, so the new fields are saved automatically.
 - PROMPT.md is a ready-made prompt that makes Claude return a complete import file in this shape, interview questions included.
+
+## Related tab
+- The **Related** tab merges the related problems from all your problems into one list (duplicates are combined), so you can see what to solve next.
+- Each row shows how many of your problems point to it ("from 5 problems"), whether you already have it in the tracker, and, under "Why it is related", the reason from each source problem.
+- Filters: **Not solved yet** (the default), **Already solved** or **All**; **Related to** one specific problem; the topic of the source problems; and a search box. Sort by most referenced or by problem number.
+- **Add to tracker as Todo** opens the problem form pre-filled with the title and id (lc-<number>). Set the difficulty and link when you save. The row then shows "In tracker: Todo" until you mark it Solved.
+- A related problem counts as in the tracker when a problem with that number exists (id lc-<number> or a title starting with the number).
+- On a problem page, related problems you already have show a "Solved" or "In tracker" badge you can click to open them.
+- No data changes: the tab is built from the existing `related` lists.
