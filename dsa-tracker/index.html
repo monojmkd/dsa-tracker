@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DSA Tracker</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f7f6f2;--card:#fff;--ink:#1d1d1b;--mute:#6b6a66;--line:#e3e1da;--acc:#2f5d50;--accfg:#fff;--easy:#2e7d4f;--med:#b7791f;--hard:#b83a3a;--code:#f0efe9}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161715;--card:#1f211e;--ink:#ecebe6;--mute:#9a9992;--line:#32342f;--acc:#7fc4ad;--accfg:#11201b;--easy:#6fcf97;--med:#e5b45c;--hard:#ee7b7b;--code:#161715}}
+:root[data-theme="dark"]{--bg:#161715;--card:#1f211e;--ink:#ecebe6;--mute:#9a9992;--line:#32342f;--acc:#7fc4ad;--accfg:#11201b;--easy:#6fcf97;--med:#e5b45c;--hard:#ee7b7b;--code:#161715}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.sub{color:var(--mute);font-size:13px}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);padding:7px 12px;border-radius:8px}
+button.p{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:600}
+button.d{color:var(--hard)}
+button:hover{filter:brightness(.96)}
+input,select,textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+textarea{resize:vertical;min-height:70px}
+textarea.code,pre{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;tab-size:2}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.stat b{display:block;font-size:20px}.stat span{font-size:12px;color:var(--mute)}
+.bar{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+@media(max-width:640px){.bar{grid-template-columns:1fr 1fr}.bar input{grid-column:1/-1}}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.item:hover{border-color:var(--acc)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.t{font-weight:600;flex:1;min-width:160px}
+.badge{font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute);white-space:nowrap}
+.Easy{color:var(--easy);border-color:var(--easy)}.Medium{color:var(--med);border-color:var(--med)}.Hard{color:var(--hard);border-color:var(--hard)}
+.Solved{background:var(--acc);color:var(--accfg);border-color:var(--acc)}.Revisit{color:var(--med);border-color:var(--med)}
+.empty{text-align:center;color:var(--mute);padding:40px 10px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;justify-content:center;align-items:flex-start;overflow:auto;padding:max(16px,env(safe-area-inset-top,0px)) 12px 24px;z-index:9}
+.modal{background:var(--bg);border-radius:14px;max-width:760px;width:100%;padding:18px;border:1px solid var(--line)}
+.f{display:grid;grid-template-columns:1fr 1fr;gap:10px}.f .w{grid-column:1/-1}
+@media(max-width:560px){.f{grid-template-columns:1fr}}
+label{font-size:12px;color:var(--mute);display:block;margin-bottom:2px}
+.tabs{display:flex;gap:6px;margin:12px 0 6px}
+.tabs button.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto;margin:0;white-space:pre}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute);margin:16px 0 4px}
+p.n{white-space:pre-wrap;margin:0}
+.note{font-size:12px;background:var(--card);border:1px dashed var(--line);border-radius:8px;padding:6px 10px;margin-bottom:12px;color:var(--mute)}
+a{color:var(--acc)}
+table{border-collapse:collapse;font-size:13px;margin:6px 0;width:100%}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;white-space:nowrap}th{background:var(--card)}
+.nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}.nav button.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.vb{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;background:var(--card);margin-bottom:8px}
+.vb .row input{flex:1;min-width:110px}
+.f h3{grid-column:1/-1;margin:10px 0 0}
+details{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px}summary{cursor:pointer;font-weight:600}
+.kv{display:grid;gap:8px}.kv b{font-size:12px;color:var(--mute);display:block}
+.link{cursor:pointer;text-decoration:underline}[hidden]{display:none!important}
+.bar2{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:14px}
+@media(max-width:640px){.bar2{grid-template-columns:1fr 1fr}.bar2 input{grid-column:1/-1}}
+.rel{margin:0;padding-left:20px}.rel li{margin:3px 0}
+.qtext{font-size:17px;font-weight:600;margin:10px 0}
+.ans{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0}
+.bar4{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px}.bar4 input{grid-column:1/-1}
+.rc-Red{color:var(--hard);border-color:var(--hard)}.rc-Yellow{color:var(--med);border-color:var(--med)}.rc-Green{color:var(--easy);border-color:var(--easy)}
+.due{color:var(--hard);border-color:var(--hard);font-weight:600}
+input[type=checkbox]{width:auto;padding:0}
+.cbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:8px}.cbar #cq{grid-column:1/-1}
+.opts{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}.opts label{display:flex;gap:6px;align-items:center;font-size:13px;margin:0;cursor:pointer}
+pre.cx{padding:8px 0}.cl{display:flex;white-space:pre}.cl .no{flex:none;width:40px;text-align:right;padding-right:10px;color:var(--mute);user-select:none}.cl.hit{background:rgba(255,196,0,.25)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>DSA Tracker</h1><div class="sub">Java, JavaScript &amp; TypeScript solutions, notes, interview questions and revision list</div></div>
+    <div class="row"><button id="lock" title="Forget password on this device">Lock</button><button id="imp">Import</button><input type="file" id="impf" accept="application/json" hidden><button id="exp">Export</button><button class="p" id="add">+ Add problem</button></div>
+  </header>
+  <div id="mode"></div>
+  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button><button id="tRel">Related</button><button id="tRev">Revise</button><button id="tCodeSearch">Code</button></div>
+  <div id="pv">
+  <div class="stats" id="stats"></div>
+  <div class="bar">
+    <input id="q" placeholder="Search title, tag, notes, code…">
+    <select id="fTopic"></select>
+    <select id="fDiff"><option value="">All levels</option><option>Easy</option><option>Medium</option><option>Hard</option></select>
+    <select id="fStat"><option value="">All status</option><option>Todo</option><option>Attempted</option><option>Solved</option><option>Revisit</option></select>
+    <select id="fLang"><option value="">Any language</option><option value="java">Has Java</option><option value="js">Has JS</option><option value="ts">Has TS</option><option value="both">Java + JS</option></select>
+  </div>
+  <div id="list"><div class="empty">Loading…</div></div>
+  </div>
+  <div id="patv" hidden><div class="row" style="margin-bottom:10px"><button class="p" id="addp">+ Add pattern</button><span class="sub">Recognition cues and reusable templates for each pattern</span></div><div id="patl"></div></div>
+  <div id="intv" hidden>
+    <div class="row" style="margin-bottom:10px"><button class="p" id="rq">Random question</button><span class="sub" id="ic"></span></div>
+    <div class="bar2"><input id="iq" placeholder="Search questions, answers, problems…"><select id="ik"><option value="">All kinds</option><option>Follow-up</option><option>Concept</option><option>Complexity</option><option>Edge case</option><option>Trade-off</option></select><select id="it"></select></div>
+    <div id="il"></div>
+  </div>
+  <div id="relv" hidden>
+    <div class="sub" id="xc" style="margin-bottom:10px"></div>
+    <div class="bar4"><input id="xq" placeholder="Search related problems, reasons, source problems…">
+      <select id="xs"><option value="todo" selected>Not solved yet</option><option value="">All</option><option value="solved">Already solved</option></select>
+      <select id="xsrc"></select><select id="xt"></select>
+      <select id="xo"><option value="refs">Most referenced first</option><option value="num">By problem number</option></select></div>
+    <div id="xl"></div>
+  </div>
+  <div id="revv" hidden>
+    <div class="sub" id="rvc" style="margin-bottom:10px"></div>
+    <div class="bar4"><input id="rvq" placeholder="Search problems to revise…">
+      <select id="rvs"><option value="due" selected>Due now</option><option value="soon">Next 7 days</option><option value="later">Later</option><option value="none">Not scheduled</option><option value="">All</option></select>
+      <select id="rvr"><option value="">Any recall level</option><option>Red</option><option>Yellow</option><option>Green</option><option value="none">Not rated</option></select>
+      <select id="rvm"><option value="">Any mistake type</option><option>Concept</option><option>Logic</option><option>Syntax</option><option>Edge Case</option></select></div>
+    <div id="rvl"></div>
+  </div>
+  <div id="codev" hidden>
+    <div class="sub" id="cc" style="margin-bottom:10px"></div>
+    <div class="cbar"><input id="cq" placeholder="Paste or type code, e.g. fast.next.next or while (left < right)">
+      <select id="cl"><option value="">All languages</option><option value="java">Java</option><option value="js">JavaScript</option><option value="ts">TypeScript</option></select>
+      <select id="cw"><option value="">Solutions, alternates and templates</option><option value="sol">Solutions only</option><option value="alt">Alternate approaches only</option><option value="pat">Pattern templates only</option></select></div>
+    <div class="opts"><label><input type="checkbox" id="cs"> Match case</label><label><input type="checkbox" id="cr"> Regular expression</label></div>
+    <div id="cres"></div>
+  </div>
+</div>
+<div id="ovr"></div>
+<script>
+const TOPICS=["Arrays","Strings","Hash Map","Two Pointers","Sliding Window","Stack / Queue","Linked List","Trees","Graphs","Heap","Binary Search","Recursion / Backtracking","Dynamic Programming","Greedy","Sorting","Bit Manipulation","Math","Trie"];
+const $=s=>document.querySelector(s);
+function h(t,a={},...c){const e=document.createElement(t);for(const k in a){if(k==='class')e.className=a[k];else if(k.startsWith('on'))e.addEventListener(k.slice(2),a[k]);else e.setAttribute(k,a[k]);}c.flat().forEach(x=>{if(x!=null&&x!==false)e.append(x.nodeType?x:document.createTextNode(x))});return e}
+let items=[],ready=false;
+const PW='dsa-tracker-pw';
+function banner(msg){const m=$('#mode');m.replaceChildren(msg?h('div',{class:'note'},msg):'')}
+async function api(method,body,qs=''){
+  for(;;){
+    let pw=localStorage.getItem(PW);
+    if(!pw){pw=prompt('Enter your tracker password');if(pw==null)throw new Error('cancelled');localStorage.setItem(PW,pw)}
+    const r=await fetch('/api/problems'+qs,{method,headers:{'Content-Type':'application/json','x-password':pw},body:body?JSON.stringify(body):undefined});
+    if(r.status===401){localStorage.removeItem(PW);alert('Wrong password, try again.');continue}
+    if(!r.ok)throw new Error('Request failed ('+r.status+')');
+    return r.json();
+  }
+}
+async function init(){
+  try{items=await api('GET');banner('')}
+  catch(e){items=[];banner('Could not load from the server: '+e.message+'. Refresh to retry.')}
+  ready=true;render();
+}
+async function save(it){
+  it.updated=Date.now();
+  try{await api('PUT',it);const i=items.findIndex(x=>x.id===it.id);i>=0?items[i]=it:items.unshift(it);banner('')}
+  catch(e){banner('Save failed: '+e.message)}
+  render();
+}
+async function del(id){
+  try{await api('DELETE',null,'?id='+encodeURIComponent(id));items=items.filter(x=>x.id!==id);banner('')}
+  catch(e){banner('Delete failed: '+e.message)}
+  render();
+}
+
+let tab='problems';
+const PATS=["Two Pointers","Sliding Window","Fast & Slow Pointers","Prefix Sum","Hashing","Binary Search","Monotonic Stack","BFS","DFS","Backtracking","DP (1D)","DP (2D)","Greedy","Heap / Top-K","Union Find","Topological Sort","Intervals","Trie","Bit Manipulation"];
+const CUES={"Two Pointers":"Sorted array or string; find a pair or triplet; compare both ends; in-place removal or partition.","Sliding Window":"Contiguous subarray or substring; longest, shortest or count under a constraint; the window grows and shrinks.","Prefix Sum":"Many range-sum queries; subarray sum equals K; cumulative counts.","Hashing":"Need fast lookup, counts, duplicates or a complement (target - x).","Binary Search":"Sorted data, or a monotonic yes/no answer you can search on (smallest or largest feasible value).","Monotonic Stack":"Next greater or smaller element; spans; largest rectangle.","BFS":"Shortest path in an unweighted graph or grid; level by level; minimum steps.","DFS":"Explore all paths, connected components, tree recursion, cycle detection.","Backtracking":"Generate all combinations, permutations or subsets: choose, explore, undo.","DP (1D)":"Overlapping subproblems; count ways or min/max; state depends on the previous few values.","DP (2D)":"Two sequences or a grid; state is (i, j); LCS, edit distance, grid paths.","Greedy":"A local best choice is provably safe; intervals and scheduling; try sorting first.","Heap / Top-K":"K largest or smallest, streaming median, repeatedly need the current min or max."};
+const P=()=>items.filter(i=>i.kind!=='pattern'),PR=()=>items.filter(i=>i.kind==='pattern');
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const patNames=()=>{const c={};P().forEach(i=>{if(i.pattern)c[i.pattern]=(c[i.pattern]||0)+1});
+  return [...new Set([...PATS,...PR().map(p=>p.title),...Object.keys(c)])].sort((a,b)=>(c[b]||0)-(c[a]||0)||a.localeCompare(b))};
+const tabKey=ev=>{if(ev.key==='Tab'){ev.preventDefault();const t=ev.target;t.setRangeText('  ',t.selectionStart,t.selectionEnd,'end')}};
+const sec=(l,c)=>c?h('div',{},h('h3',{},l),c):null;
+
+function rich(t){
+  const out=h('div');let tb=[],tx=[];
+  const fl=()=>{if(!tb.length)return;
+    const rows=tb.filter(r=>!/^[\s|:-]+$/.test(r)).map(r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
+    const [hd,...bd]=rows;
+    out.append(h('div',{style:'overflow-x:auto'},h('table',{},h('thead',{},h('tr',{},...hd.map(c=>h('th',{},c)))),h('tbody',{},...bd.map(r=>h('tr',{},...r.map(c=>h('td',{},c))))))));tb=[]};
+  const ft=()=>{if(tx.length){out.append(h('p',{class:'n'},tx.join('\n')));tx=[]}};
+  for(const l of (t||'').split('\n')){if(l.trim().startsWith('|')){ft();tb.push(l)}else{fl();tx.push(l)}}
+  fl();ft();return out}
+
+function codeTabs(o){
+  const langs=[['java','Java'],['js','JavaScript'],['ts','TypeScript']].filter(([k])=>o[k]);
+  const box=h('div'),tabs=h('div',{class:'tabs'});let cur=langs[0]?.[0];
+  const show=()=>{
+    tabs.replaceChildren(...langs.map(([k,n])=>h('button',{class:k===cur?'on':'',onclick:()=>{cur=k;show()}},n)),
+      langs.length?h('button',{onclick:e=>{navigator.clipboard?.writeText(o[cur]);const b=e.target;b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200)}},'Copy'):null);
+    box.replaceChildren(cur?h('pre',{},o[cur]):h('div',{class:'sub'},'No code saved yet.'))};
+  show();return h('div',{},tabs,box)}
+
+const KINDS=['Follow-up','Concept','Complexity','Edge case','Trade-off'];
+const intAll=()=>P().flatMap(p=>(p.interview||[]).map(x=>({p,q:x.q,a:x.a,kind:x.kind||'Follow-up'})));
+function intMatch(x){
+  const q=$('#iq').value.toLowerCase(),k=$('#ik').value,t=$('#it').value;
+  if(k&&x.kind!==k)return false;if(t&&x.p.topic!==t)return false;
+  return !q||[x.q,x.a,x.p.title,x.p.pattern].join(' ').toLowerCase().includes(q)}
+function renderInt(){
+  const all=intAll(),tp=$('#it'),cur=tp.value;
+  const topics=[...new Set(all.map(x=>x.p.topic).filter(Boolean))].sort();
+  tp.replaceChildren(h('option',{value:''},'All topics'),...topics.map(t=>h('option',{value:t},t)));
+  tp.value=topics.includes(cur)?cur:'';
+  const res=all.filter(intMatch);
+  $('#ic').textContent=res.length+' of '+all.length+' questions';
+  $('#il').replaceChildren(...(res.length?res.map(x=>h('details',{},h('summary',{},x.q),
+    h('div',{class:'row',style:'margin:6px 0'},h('span',{class:'badge'},x.kind),h('span',{class:'badge link',onclick:()=>view(x.p.id)},x.p.title)),
+    h('p',{class:'n'},x.a))):[h('div',{class:'empty'},all.length?'No questions match these filters.':'No interview questions yet. Add them on a problem, or import a file that has them.')]));
+}
+function practice(){
+  const pool=intAll().filter(intMatch);
+  if(!pool.length){alert('No questions match the current filters.');return}
+  let cur;const body=h('div');
+  const show=rev=>body.replaceChildren(
+    h('div',{class:'row'},h('span',{class:'badge'},cur.kind),h('span',{class:'sub'},cur.p.title)),
+    h('p',{class:'qtext'},cur.q),
+    rev?h('div',{class:'ans'},h('p',{class:'n'},cur.a)):h('button',{class:'p',onclick:()=>show(true)},'Show answer'),
+    h('div',{class:'row',style:'margin-top:14px'},h('button',{onclick:next},'Next question'),h('button',{onclick:()=>view(cur.p.id)},'Open problem')));
+  const next=()=>{cur=pool[Math.floor(Math.random()*pool.length)];show(false)};
+  modal(h('div',{class:'row'},h('h1',{style:'flex:1'},'Practice'),h('button',{onclick:close},'Close')),body);next();
+}
+
+/* ---- dry-run diagram: each step becomes a card, arrows join the steps, changed values are highlighted ---- */
+const xe=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function wrapTxt(s,max){
+  const out=[];let line='';
+  for(let w of String(s).split(/\s+/).filter(Boolean)){
+    while(w.length>max){if(line){out.push(line);line=''}out.push(w.slice(0,max));w=w.slice(max)}
+    if(!line)line=w;else if((line+' '+w).length<=max)line+=' '+w;else{out.push(line);line=w}
+  }
+  if(line)out.push(line);return out.length?out:[''];
+}
+function parseTrace(t){
+  const blocks=[];let tb=[],tx=[];
+  const flush=()=>{if(!tb.length)return;
+    const rows=tb.filter(r=>!/^[\s|:-]+$/.test(r)).map(r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
+    if(rows.length>=2)blocks.push({heading:tx.join(' ').trim(),head:rows[0],rows:rows.slice(1)});
+    tx=[];tb=[]};
+  for(const l of String(t||'').split('\n')){
+    if(l.trim().startsWith('|'))tb.push(l);
+    else{if(tb.length)flush();if(l.trim())tx.push(l.trim())}
+  }
+  flush();
+  return {blocks,notes:tx};
+}
+function traceSvg(title,subtitle,text){
+  const {blocks,notes}=parseTrace(text);if(!blocks.length)return null;
+  const CW=240,GX=40,GY=36,PAD=24,PER=3,LH=15,HEAD=26,VW=7.3,LW=6.2,INNER=CW-24,W=PAD*2+PER*CW+(PER-1)*GX;
+  const MONO='ui-monospace,SFMono-Regular,Menlo,Consolas,&quot;DejaVu Sans Mono&quot;,monospace';
+  let y=PAD,b='';
+  const T=(x,yy,s,cls)=>'<text x="'+x+'" y="'+yy+'" class="'+cls+'">'+xe(s)+'</text>';
+  b+=T(PAD,y+18,title,'ti');y+=30;
+  if(subtitle){const sl=wrapTxt('Input: '+String(subtitle).replace(/^input:\s*/i,''),100);sl.forEach((l,k)=>b+=T(PAD,y+14+k*16,l,'su'));y+=sl.length*16+8}
+  y+=6;
+  for(const blk of blocks){
+    if(blk.heading){const hl=wrapTxt(blk.heading,100);hl.forEach((l,k)=>b+=T(PAD,y+14+k*17,l,'hd'));y+=hl.length*17+10}
+    const nc=blk.head.length,isText=[];
+    for(let c=1;c<nc;c++){const vals=blk.rows.map(r=>r[c]||'');isText[c]=vals.reduce((a,v)=>a+v.length,0)/vals.length>24||vals.filter(v=>v.split(/\s+/).length>=5).length>vals.length/2}
+    const cards=blk.rows.map((r,ri)=>{
+      const prev=ri?blk.rows[ri-1]:null,t0=r[0]||'',h0=blk.head[0]||'';
+      const ttl=!t0?h0:/^start$/i.test(t0)?'start':(/^[\w.\-]{1,10}$/.test(t0)?h0+' = '+t0:t0);
+      const items=[];let n=0;
+      for(let c=1;c<nc;c++){
+        const lab=blk.head[c]||'',val=r[c]||'';if(val==='')continue;
+        const changed=!!prev&&!isText[c]&&(prev[c]||'')!==val;
+        let lines;
+        if(isText[c])lines=[{lab,val:''},...wrapTxt(val,38).map(v=>({val:v,tx:1}))];
+        else if(lab.length*LW+10+val.length*VW<=INNER)lines=[{lab,val}];
+        else lines=[{lab,val:''},...wrapTxt(val,Math.floor(INNER/VW)).map(v=>({val:v}))];
+        items.push({lines,changed});n+=lines.length}
+      return {ttl,items,h:HEAD+14+n*LH+6};
+    });
+    const pos=[];
+    for(let s=0;s<cards.length;s+=PER){
+      const row=cards.slice(s,s+PER),rh=Math.max(...row.map(c=>c.h));
+      row.forEach((c,k)=>pos.push({c,x:PAD+k*(CW+GX),y,h:rh}));y+=rh+GY;
+    }
+    for(const p of pos){
+      const {c,x,y:yy,h}=p;
+      b+='<rect x="'+x+'" y="'+yy+'" width="'+CW+'" height="'+h+'" rx="8" class="cd"/>';
+      b+='<rect x="'+x+'" y="'+yy+'" width="'+CW+'" height="'+HEAD+'" rx="8" class="ch"/><rect x="'+x+'" y="'+(yy+HEAD/2)+'" width="'+CW+'" height="'+(HEAD/2)+'" class="ch"/>';
+      b+=T(x+12,yy+17,c.ttl,'ct');
+      let ly=yy+HEAD+16;
+      for(const it of c.items){
+        if(it.changed)b+='<rect x="'+(x+5)+'" y="'+(ly-11)+'" width="3" height="'+(it.lines.length*LH-2)+'" rx="1.5" class="cm"/>';
+        it.lines.forEach(ln=>{
+          let t='<text x="'+(x+12)+'" y="'+ly+'">';
+          if(ln.lab!==undefined)t+='<tspan class="lb">'+xe(ln.lab)+(ln.val?': ':'')+'</tspan>';
+          if(ln.val)t+='<tspan class="'+(ln.tx?'tx':it.changed?'vc':'v')+'">'+xe(ln.val)+'</tspan>';
+          b+=t+'</text>';ly+=LH;
+        });
+      }
+    }
+    pos.forEach((p,k)=>{
+      if(k+1>=pos.length)return;const q=pos[k+1];
+      if(q.y===p.y)b+='<line x1="'+(p.x+CW+3)+'" y1="'+(p.y+HEAD/2)+'" x2="'+(q.x-3)+'" y2="'+(p.y+HEAD/2)+'" class="ar" marker-end="url(#ah)"/>';
+      else{const sx=p.x+CW/2,sy=p.y+p.h+2,ex=q.x+CW/2,ey=q.y-4,my=sy+(GY-6)/2;b+='<path d="M'+sx+' '+sy+' V'+my+' H'+ex+' V'+ey+'" class="ar" fill="none" marker-end="url(#ah)"/>'}
+    });
+    y=y-GY+18;
+  }
+  if(notes.length){
+    const nl=[];notes.forEach(n=>{const good=/^(return|result|answer|so the answer|the answer)/i.test(n);wrapTxt(n,108).forEach(l=>nl.push({l,good}))});
+    const bh=nl.length*18+16;
+    b+='<rect x="'+PAD+'" y="'+y+'" width="'+(W-PAD*2)+'" height="'+bh+'" rx="8" class="nb"/>';
+    nl.forEach((n,k)=>b+=T(PAD+14,y+22+k*18,n.l,n.good?'ng':'nt'));
+    y+=bh+14;
+  }
+  b+='<text x="'+PAD+'" y="'+(y+10)+'" class="lg">A highlighted value changed since the previous step</text><text x="'+(W-PAD)+'" y="'+(y+10)+'" class="lg" text-anchor="end">DSA Tracker</text>';
+  const H=y+10+PAD;
+  const css='text{font-family:-apple-system,&quot;Segoe UI&quot;,Roboto,Helvetica,Arial,sans-serif}.ti{font-size:20px;font-weight:700;fill:#0f172a}.su{font-size:12.5px;fill:#475569}.hd{font-size:14px;font-weight:700;fill:#1e293b}.cd{fill:#fff;stroke:#cbd5e1;stroke-width:1.2}.ch{fill:#eef2f7}.ct{font-size:13px;font-weight:700;fill:#0f172a}.lb{font-size:11px;fill:#64748b}.v{font-family:'+MONO+';font-size:12px;fill:#1e293b}.vc{font-family:'+MONO+';font-size:12px;font-weight:700;fill:#b45309}.tx{font-size:11.5px;fill:#334155}.cm{fill:#f59e0b}.ar{stroke:#94a3b8;stroke-width:1.6}.nb{fill:#f8fafc;stroke:#e2e8f0}.nt{font-size:13px;fill:#334155}.ng{font-size:13px;font-weight:700;fill:#15803d}.lg{font-size:11px;fill:#94a3b8}';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'"><defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker><style>'+css+'</style></defs><rect width="'+W+'" height="'+H+'" fill="#ffffff"/>'+b+'</svg>';
+  return {svg,w:W,h:H};
+}
+function svgToPng(svg,w,h,scale){
+  scale=scale||2;
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>{const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);c.toBlob(bl=>bl?res(bl):rej(new Error('png')),'image/png')};
+    img.onerror=()=>rej(new Error('image'));
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  });
+}
+const slugF=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+function traceInfo(i,vi){
+  const v=vi>=0?i.versions[vi]:null;
+  return v?{title:i.title+' · '+v.name,sub:'',text:v.trace}:{title:i.title+' · dry run',sub:i.traceInput||'',text:i.trace};
+}
+const traceFile=(i,vi,ext)=>slugF(i.title)+(vi>=0?'-alt'+(vi+1):'')+'-dry-run.'+ext;
+function dl(blob,name){const u=URL.createObjectURL(blob);const a=h('a',{href:u,download:name});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+async function savePng(i,vi){
+  const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;
+  try{dl(await svgToPng(d.svg,d.w,d.h),traceFile(i,vi,'png'))}catch(e){alert('Could not make the PNG in this browser. Use Save SVG instead.')}
+}
+function saveSvg(i,vi){const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;dl(new Blob([d.svg],{type:'image/svg+xml'}),traceFile(i,vi,'svg'))}
+function traceTools(i,vi){
+  const t=traceInfo(i,vi);if(!parseTrace(t.text).blocks.length)return null;
+  return h('div',{class:'row',style:'margin:8px 0 2px'},
+    h('button',{onclick:()=>diagramView(i.id,vi)},'View as diagram'),h('button',{onclick:()=>savePng(i,vi)},'Save PNG'),h('button',{onclick:()=>saveSvg(i,vi)},'Save SVG'));
+}
+function diagramView(id,vi){
+  const i=items.find(x=>x.id===id);if(!i)return;
+  const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;
+  modal(
+    h('div',{class:'row'},h('h1',{style:'flex:1'},'Dry run diagram'),h('button',{onclick:()=>view(id)},'Back'),h('button',{onclick:close},'Close')),
+    h('div',{style:'overflow-x:auto;margin-top:10px'},h('img',{src:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(d.svg),alt:'Dry run diagram for '+i.title,style:'max-width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#fff'})),
+    h('div',{class:'row',style:'margin-top:12px'},h('button',{class:'p',onclick:()=>savePng(i,vi)},'Save PNG'),h('button',{onclick:()=>saveSvg(i,vi)},'Save SVG')));
+}
+
+const REVF=['lastRevised','nextRevision','recall','solvedWithoutHelp','timeTaken','mistakeType','mentalModel'];
+const RECALLS=['Red','Yellow','Green'],MISTAKES=['Concept','Logic','Syntax','Edge Case'],MODELS=['Yes','Partial','No'];
+const RED_DAYS=1,YELLOW_DAYS=3,GREEN_STEPS=[7,14,30,60];
+const pad2=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+const today=()=>ymd(new Date());
+const isD=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'');
+const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return ymd(d)};
+const diffDays=(a,b)=>Math.round((parseD(a)-parseD(b))/864e5);
+function nextFrom(date,recall,history){
+  if(recall==='Red')return addDays(date,RED_DAYS);
+  if(recall==='Yellow')return addDays(date,YELLOW_DAYS);
+  let streak=0;for(let k=history.length-1;k>=0&&history[k].recall==='Green';k--)streak++;
+  return addDays(date,GREEN_STEPS[Math.min(streak,GREEN_STEPS.length-1)]);
+}
+const dueDays=i=>isD(i.nextRevision)?diffDays(i.nextRevision,today()):null;
+const dueText=n=>n===null?'':n<0?'Overdue by '+(-n)+(n===-1?' day':' days'):n===0?'Due today':'Due in '+n+(n===1?' day':' days');
+const revCat=i=>{const n=dueDays(i);return n===null?'none':n<=0?'due':n<=7?'soon':'later'};
+const dueBadge=i=>{const n=dueDays(i);return n!==null&&n<=0?h('span',{class:'badge due'},n<0?'Overdue':'Due today'):null};
+const stripRev=o=>{REVF.forEach(k=>{if(o[k]===''||o[k]==null||(typeof o[k]==='number'&&isNaN(o[k])))delete o[k]});return o};
+function applyLatest(i){
+  const r=(i.revisions||[]).slice(-1)[0];
+  REVF.forEach(k=>delete i[k]);
+  if(!r)return;
+  i.lastRevised=r.date;i.recall=r.recall;
+  if(r.solvedWithoutHelp)i.solvedWithoutHelp=r.solvedWithoutHelp;
+  if(r.timeTaken!==undefined)i.timeTaken=r.timeTaken;
+  if(r.mistakeType)i.mistakeType=r.mistakeType;
+  if(r.mentalModel)i.mentalModel=r.mentalModel;
+}
+function revBlock(i){
+  const n=dueDays(i),hist=i.revisions||[];
+  const has=REVF.some(k=>i[k]!==undefined&&i[k]!=='');
+  const kv=(l,v)=>(v===undefined||v==='')?null:h('div',{},h('b',{},l),h('p',{class:'n'},String(v)));
+  const top=has?h('div',{},
+    i.recall&&h('div',{class:'row',style:'margin-bottom:8px'},h('span',{class:'badge rc-'+i.recall},'Recall: '+i.recall),n!==null&&h('span',{class:'badge'+(n<=0?' due':'')},dueText(n))),
+    h('div',{class:'f kv'},kv('Last revised',i.lastRevised),kv('Next revision',i.nextRevision),kv('Solved without help',i.solvedWithoutHelp),
+      kv('Time taken',(i.timeTaken!==undefined&&i.timeTaken!=='')?i.timeTaken+' min':''),kv('Mistake type',i.mistakeType),kv('Mental model recalled',i.mentalModel))
+  ):h('p',{class:'n sub'},'Not revised yet.');
+  const tbl=hist.length?h('div',{style:'overflow-x:auto;margin-top:10px'},h('table',{},
+    h('thead',{},h('tr',{},...['Date','Recall','Without help','Time (min)','Mistake','Mental model'].map(c=>h('th',{},c)))),
+    h('tbody',{},...[...hist].reverse().map(r=>h('tr',{},h('td',{},r.date||''),h('td',{},r.recall?h('span',{class:'badge rc-'+r.recall},r.recall):''),
+      h('td',{},r.solvedWithoutHelp||''),h('td',{},r.timeTaken!==undefined?String(r.timeTaken):''),h('td',{},r.mistakeType||''),h('td',{},r.mentalModel||'')))))):null;
+  return h('div',{},top,tbl,h('div',{class:'row',style:'margin-top:10px'},
+    h('button',{class:'p',onclick:()=>logRev(i.id)},'Log a revision'),hist.length?h('button',{onclick:()=>undoRev(i.id)},'Undo last revision'):null));
+}
+function logRev(id,fromList){
+  const i=items.find(x=>x.id===id);if(!i)return;
+  const hist=i.revisions||[],F={};let manual=false;
+  const back=()=>fromList?close():view(id);
+  const selB=a=>h('select',{},h('option',{value:''},'—'),...a.map(x=>h('option',{},x)));
+  const fld=(k,lab,el)=>{F[k]=el;return h('div',{},h('label',{},lab),el)};
+  const date=h('input',{type:'date'});date.value=today();
+  const next=h('input',{type:'date'});
+  const recompute=()=>{if(!manual&&F.recall.value&&isD(date.value))next.value=nextFrom(date.value,F.recall.value,hist)};
+  modal(
+    h('h1',{},'Log a revision'),h('div',{class:'sub'},i.title),
+    h('div',{class:'note',style:'margin-top:10px'},'Next revision is suggested from the recall level: Red 1 day, Yellow 3 days, Green 7 days, then 14, 30 and 60 for repeated Greens. You can change the date.'),
+    h('div',{class:'f',style:'margin-top:4px'},
+      fld('date','Date of this attempt',date),
+      fld('recall','Recall level *',selB(RECALLS)),
+      fld('help','Solved without help',selB(['Yes','No'])),
+      fld('time','Time taken (minutes)',h('input',{type:'number',min:'0',placeholder:'e.g. 15'})),
+      fld('mistake','Mistake type',selB(MISTAKES)),
+      fld('model','Mental model recalled',selB(MODELS)),
+      fld('next','Next revision',next)),
+    h('div',{class:'row',style:'margin-top:16px'},
+      h('button',{class:'p',onclick:async()=>{
+        if(!F.recall.value){F.recall.focus();return}
+        if(!isD(date.value)){date.focus();return}
+        const rev={date:date.value,recall:F.recall.value,solvedWithoutHelp:F.help.value,timeTaken:F.time.value===''?'':Number(F.time.value),mistakeType:F.mistake.value,mentalModel:F.model.value};
+        Object.keys(rev).forEach(k=>{if(rev[k]===''||(typeof rev[k]==='number'&&isNaN(rev[k])))delete rev[k]});
+        i.revisions=[...hist,rev];applyLatest(i);
+        if(isD(next.value))i.nextRevision=next.value;
+        await save(i);back();}},'Save revision'),
+      h('button',{onclick:back},'Cancel')));
+  F.recall.addEventListener('input',recompute);date.addEventListener('input',recompute);next.addEventListener('input',()=>{manual=true});
+}
+async function undoRev(id){
+  const i=items.find(x=>x.id===id);if(!i||!(i.revisions||[]).length)return;
+  if(!confirm('Remove the latest revision entry and go back to the previous one?'))return;
+  i.revisions=i.revisions.slice(0,-1);applyLatest(i);
+  const r=i.revisions.slice(-1)[0];if(r)i.nextRevision=nextFrom(r.date,r.recall,i.revisions.slice(0,-1));
+  if(!i.revisions.length)delete i.revisions;
+  await save(i);view(id);
+}
+function revRow(i){
+  const n=dueDays(i),na=(i.revisions||[]).length;
+  return h('div',{class:'item',style:'cursor:default'},
+    h('div',{class:'row'},h('span',{class:'t'},i.title),i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
+      i.recall?h('span',{class:'badge rc-'+i.recall},i.recall):h('span',{class:'badge'},'Not rated'),
+      n!==null?h('span',{class:'badge'+(n<=0?' due':'')},dueText(n)):h('span',{class:'badge'},'Not scheduled')),
+    h('div',{class:'row sub',style:'margin-top:4px'},i.lastRevised?'Last revised '+i.lastRevised:'Never revised',i.nextRevision&&'· Next '+i.nextRevision,
+      i.mistakeType&&'· Mistake: '+i.mistakeType,i.mentalModel&&'· Mental model: '+i.mentalModel,na?'· '+na+(na===1?' attempt':' attempts'):null),
+    h('div',{class:'row',style:'margin-top:8px'},h('button',{class:'p',onclick:()=>logRev(i.id,true)},'Log a revision'),h('button',{onclick:()=>view(i.id)},'Open')));
+}
+function renderRevise(){
+  const A=P(),q=$('#rvq').value.toLowerCase(),sf=$('#rvs').value,rf=$('#rvr').value,mf=$('#rvm').value;
+  const cnt={due:0,soon:0,later:0,none:0};A.forEach(i=>cnt[revCat(i)]++);
+  $('#rvc').textContent=cnt.due+' due now · '+cnt.soon+' in the next 7 days · '+cnt.later+' later · '+cnt.none+' not scheduled';
+  $('#tRev').textContent='Revise'+(cnt.due?' ('+cnt.due+')':'');
+  const res=A.filter(i=>{
+    if(sf&&revCat(i)!==sf)return false;
+    if(rf==='none'){if(i.recall)return false}else if(rf&&i.recall!==rf)return false;
+    if(mf&&i.mistakeType!==mf)return false;
+    return !q||[i.title,i.pattern,i.topic].join(' ').toLowerCase().includes(q)})
+   .sort((a,b)=>(a.nextRevision||'9999-99-99').localeCompare(b.nextRevision||'9999-99-99')||(parseInt(a.title)||0)-(parseInt(b.title)||0));
+  $('#rvl').replaceChildren(...(res.length?res.map(revRow):[h('div',{class:'empty'},sf==='due'?'Nothing is due. Log a revision on a problem to schedule its next one.':'No problems match these filters.')]));
+}
+
+const relParse=r=>{const m=/^\s*(\d+)\.\s*([^:]+?)\s*(?::\s*(.*))?$/.exec(r);if(m)return{num:m[1],title:m[2],why:m[3]||''};const t=String(r),k=t.indexOf(':');return k>0?{num:'',title:t.slice(0,k).trim(),why:t.slice(k+1).trim()}:{num:'',title:t.trim(),why:''}};
+const relHave=x=>P().find(p=>x.num?(p.id==='lc-'+x.num||(p.title||'').startsWith(x.num+'.')):(p.title||'').toLowerCase()===x.title.toLowerCase());
+function relAll(){
+  const map=new Map();
+  P().forEach(p=>(p.related||[]).forEach(r=>{const x=relParse(r),key=x.num||x.title.toLowerCase();
+    let e=map.get(key);if(!e){e={key,num:x.num,title:x.title,refs:[]};map.set(key,e)}
+    e.refs.push({p,why:x.why})}));
+  return [...map.values()].map(e=>({...e,have:relHave(e)}));
+}
+const relSolved=e=>!!e.have&&e.have.status==='Solved';
+function relFilter(e){
+  const q=$('#xq').value.toLowerCase(),st=$('#xs').value,src=$('#xsrc').value,tp=$('#xt').value;
+  if(st==='todo'&&relSolved(e))return false;if(st==='solved'&&!relSolved(e))return false;
+  if(src&&!e.refs.some(r=>r.p.id===src))return false;
+  if(tp&&!e.refs.some(r=>r.p.topic===tp))return false;
+  return !q||[e.title,e.num,e.refs.map(r=>r.p.title+' '+r.why).join(' ')].join(' ').toLowerCase().includes(q)}
+function relRow(e){
+  const st=e.have?(e.have.status||'Todo'):null;
+  const pre={title:(e.num?e.num+'. ':'')+e.title,status:'Todo'};if(e.num)pre.id='lc-'+e.num;
+  return h('div',{class:'item',style:'cursor:default'},
+    h('div',{class:'row'},h('span',{class:'t'},(e.num?e.num+'. ':'')+e.title),
+      h('span',{class:'badge'},'from '+e.refs.length+(e.refs.length===1?' problem':' problems')),
+      st?h('span',{class:'badge '+st},st==='Solved'?'Solved ✓':'In tracker: '+st):h('span',{class:'badge'},'Not in tracker')),
+    h('details',{style:'margin:8px 0 0'},h('summary',{},'Why it is related'),
+      ...e.refs.map(r=>h('p',{class:'n',style:'margin:4px 0'},h('span',{class:'link',onclick:()=>view(r.p.id)},r.p.title),r.why?': '+r.why:''))),
+    h('div',{class:'row',style:'margin-top:8px'},
+      e.have?h('button',{onclick:()=>view(e.have.id)},'Open in tracker'):h('button',{class:'p',onclick:()=>form(null,pre)},'Add to tracker as Todo'),
+      h('a',{href:'https://leetcode.com/problemset/?search='+encodeURIComponent(e.title),target:'_blank',rel:'noopener'},'Find on LeetCode ↗')));
+}
+function renderRel(){
+  const all=relAll(),srcs=P().filter(p=>(p.related||[]).length).sort((a,b)=>(parseInt(a.title)||0)-(parseInt(b.title)||0));
+  const ss=$('#xsrc'),cs=ss.value;ss.replaceChildren(h('option',{value:''},'Related to: any problem'),...srcs.map(p=>h('option',{value:p.id},p.title)));ss.value=srcs.some(p=>p.id===cs)?cs:'';
+  const ts=$('#xt'),ct=ts.value,topics=[...new Set(srcs.map(p=>p.topic).filter(Boolean))].sort();
+  ts.replaceChildren(h('option',{value:''},'Any topic'),...topics.map(t=>h('option',{value:t},t)));ts.value=topics.includes(ct)?ct:'';
+  const num=e=>+e.num||1e9,so=$('#xo').value;
+  const res=all.filter(relFilter).sort(so==='num'?(a,b)=>num(a)-num(b):(a,b)=>b.refs.length-a.refs.length||num(a)-num(b));
+  $('#xc').textContent=res.length+' shown · '+all.length+' related problems from '+srcs.length+' of your problems · '+all.filter(e=>!relSolved(e)).length+' not solved yet';
+  $('#xl').replaceChildren(...(res.length?res.map(relRow):[h('div',{class:'empty'},all.length?'No related problems match these filters.':'No related problems yet. They appear here once your problems list related problems.')]));
+}
+
+const CODELANGS=[['java','Java'],['js','JavaScript'],['ts','TypeScript']];
+function codeSources(){
+  const out=[];
+  P().forEach(p=>{
+    CODELANGS.forEach(([k,n])=>{if(p[k])out.push({title:p.title,label:'Solution',kind:'sol',lang:k,langName:n,code:p[k],open:()=>view(p.id)})});
+    (p.versions||[]).forEach(v=>CODELANGS.forEach(([k,n])=>{if(v[k])out.push({title:p.title,label:v.name?'Alternate: '+v.name:'Alternate approach',kind:'alt',lang:k,langName:n,code:v[k],open:()=>view(p.id)})}));
+  });
+  PR().forEach(p=>CODELANGS.forEach(([k,n])=>{if(p[k])out.push({title:p.title,label:'Pattern template',kind:'pat',lang:k,langName:n,code:p[k],open:()=>patView(p.title)})}));
+  return out;
+}
+// returns [{s,e}] = first and last line (0-based) of each match
+function codeFind(code,q,opt){
+  const lines=code.split('\n'),out=[];
+  if(opt.regex){
+    let re;try{re=new RegExp(q,'gm'+(opt.cs?'':'i'))}catch(e){throw new Error('That is not a valid regular expression.')}
+    const offs=[];let o=0;for(const l of lines){offs.push(o);o+=l.length+1}
+    const lineOf=i=>{let lo=0,hi=offs.length-1;while(lo<hi){const mid=(lo+hi+1)>>1;if(offs[mid]<=i)lo=mid;else hi=mid-1}return lo};
+    let m;while((m=re.exec(code))&&out.length<50){out.push({s:lineOf(m.index),e:lineOf(m.index+Math.max(m[0].length-1,0))});if(m[0].length===0)re.lastIndex++}
+    return out;
+  }
+  const norm=t=>opt.cs?t:t.toLowerCase();
+  const qc=norm(q).replace(/\s+/g,'');if(!qc)return out;
+  let comp='';const lineIdx=[];
+  lines.forEach((l,li)=>{for(const ch of l){if(/\s/.test(ch))continue;const t=norm(ch);for(let k=0;k<t.length;k++){comp+=t[k];lineIdx.push(li)}}});
+  let from=0;while(out.length<50){const i=comp.indexOf(qc,from);if(i<0)break;out.push({s:lineIdx[i],e:lineIdx[i+qc.length-1]});from=i+qc.length}
+  return out;
+}
+function excerpt(code,hits){
+  const lines=code.split('\n'),hit=new Set(),show=new Set();
+  hits.forEach(m=>{for(let i=m.s;i<=m.e;i++)hit.add(i)});
+  hit.forEach(i=>{for(let d=-1;d<=1;d++){const j=i+d;if(j>=0&&j<lines.length)show.add(j)}});
+  const rows=[];let prev=-2;
+  for(const i of [...show].sort((a,b)=>a-b)){
+    if(prev>=0&&i>prev+1)rows.push(h('div',{class:'cl'},h('span',{class:'no'},'…')));
+    rows.push(h('div',{class:'cl'+(hit.has(i)?' hit':'')},h('span',{class:'no'},String(i+1)),lines[i]===''?' ':lines[i]));prev=i;
+  }
+  return h('pre',{class:'cx'},...rows);
+}
+function codeRow({s,m}){
+  const cp=h('button',{onclick:()=>{navigator.clipboard?.writeText(s.code);cp.textContent='Copied';setTimeout(()=>cp.textContent='Copy full code',1200)}},'Copy full code');
+  return h('div',{class:'item',style:'cursor:default'},
+    h('div',{class:'row'},h('span',{class:'t'},s.title),h('span',{class:'badge'},s.langName),h('span',{class:'badge'},s.label),h('span',{class:'badge'},m.length+(m.length===1?' match':' matches'))),
+    excerpt(s.code,m),
+    h('div',{class:'row',style:'margin-top:8px'},cp,h('button',{onclick:s.open},'Open')));
+}
+function renderCode(){
+  if(tab!=='code')return;
+  const raw=$('#cq').value,lang=$('#cl').value,where=$('#cw').value,opt={cs:$('#cs').checked,regex:$('#cr').checked};
+  const src=codeSources().filter(x=>(!lang||x.lang===lang)&&(!where||x.kind===where));
+  const info=$('#cc'),list=$('#cres');
+  if(!raw.trim()){
+    info.textContent='Search inside '+src.length+' code snippets from '+new Set(src.map(x=>x.title)).size+' problems and patterns. Spaces and line breaks are ignored, so code pasted with different formatting still matches. Tick Regular expression to match exactly as typed.';
+    list.replaceChildren();return;
+  }
+  const res=[];
+  try{for(const x of src){const m=codeFind(x.code,raw,opt);if(m.length)res.push({s:x,m})}}
+  catch(e){info.textContent=e.message;list.replaceChildren();return}
+  const CAP=100;
+  info.textContent=res.length+(res.length===1?' snippet matches':' snippets match')+(res.length>CAP?' (showing the first '+CAP+', narrow the search to see the rest)':'');
+  list.replaceChildren(...(res.length?res.slice(0,CAP).map(codeRow):[h('div',{class:'empty'},'No code matches.')]));
+}
+
+function render(){
+  if(!ready)return;
+  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';$('#tInt').className=tab==='interview'?'on':'';$('#tRel').className=tab==='related'?'on':'';$('#tRev').className=tab==='revise'?'on':'';$('#tCodeSearch').className=tab==='code'?'on':'';
+  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';$('#intv').hidden=tab!=='interview';$('#relv').hidden=tab!=='related';$('#revv').hidden=tab!=='revise';$('#codev').hidden=tab!=='code';
+  const A=P();
+  const topics=[...new Set(A.map(i=>i.topic).filter(Boolean))].sort();
+  const ft=$('#fTopic'),cur=ft.value;
+  ft.replaceChildren(h('option',{value:''},'All topics'),...topics.map(t=>h('option',{value:t},t)));
+  ft.value=topics.includes(cur)?cur:'';
+  const n=s=>A.filter(i=>i.status===s).length;
+  $('#stats').replaceChildren(...[['Total',A.length],['Solved',n('Solved')],['To revisit',n('Revisit')],['Java',A.filter(i=>i.java).length],['JS',A.filter(i=>i.js).length],['TS',A.filter(i=>i.ts).length],['Interview Q&A',A.reduce((n,i)=>n+(i.interview||[]).length,0)],['Due to revise',A.filter(i=>{const n=dueDays(i);return n!==null&&n<=0}).length]]
+    .map(([l,v])=>h('div',{class:'stat'},h('b',{},v),h('span',{},l))));
+  const q=$('#q').value.toLowerCase(),d=$('#fDiff').value,s=$('#fStat').value,l=$('#fLang').value,tp=ft.value;
+  const res=A.filter(i=>{
+    if(tp&&i.topic!==tp)return false;if(d&&i.difficulty!==d)return false;if(s&&i.status!==s)return false;
+    if(l==='java'&&!i.java)return false;if(l==='js'&&!i.js)return false;if(l==='ts'&&!i.ts)return false;if(l==='both'&&!(i.java&&i.js))return false;
+    if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.ts,i.topic,i.pattern,i.cue,i.insight,i.mistakeType,i.recall,(i.interview||[]).map(x=>x.q+' '+x.a).join(' '),(i.related||[]).join(' '),(i.versions||[]).map(v=>[v.name,v.java,v.js,v.ts].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
+    return true}).sort((a,b)=>(b.updated||0)-(a.updated||0));
+  $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},A.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
+  renderPats();renderInt();renderRel();renderRevise();renderCode();
+}
+function card(i){
+  return h('div',{class:'item',onclick:()=>view(i.id)},
+    h('div',{class:'row'},h('span',{class:'t'},i.title),
+      i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
+      h('span',{class:'badge '+i.status},i.status||'Todo'),i.recall&&h('span',{class:'badge rc-'+i.recall},i.recall),dueBadge(i)),
+    h('div',{class:'row sub',style:'margin-top:4px'},i.pattern&&'◆ '+i.pattern,i.topic&&'· '+i.topic,i.java&&'· Java',i.js&&'· JS',i.ts&&'· TS',(i.versions||[]).length?'· '+(i.versions.length+1)+' approaches':null,i.trace?'· trace':null,(i.interview||[]).length?'· '+i.interview.length+' Q&A':null));
+}
+function renderPats(){
+  const A=P(),saved=Object.fromEntries(PR().map(p=>[p.title,p]));
+  $('#patl').replaceChildren(...patNames().map(n=>{
+    const c=A.filter(i=>i.pattern===n).length;
+    return h('div',{class:'item',onclick:()=>patView(n)},
+      h('div',{class:'row'},h('span',{class:'t'},n),h('span',{class:'badge'},c+(c===1?' problem':' problems'))),
+      h('div',{class:'sub',style:'margin-top:4px'},saved[n]?.cues||CUES[n]||'No recognition cues yet.'))}));
+}
+function close(){$('#ovr').replaceChildren()}
+function modal(...c){const o=h('div',{class:'ov',onclick:e=>{if(e.target===o)close()}},h('div',{class:'modal'},...c));$('#ovr').replaceChildren(o)}
+
+function view(id){
+  const i=items.find(x=>x.id===id);if(!i)return;
+  const st=h('select',{onchange:async e=>{i.status=e.target.value;await save(i);view(id)}},...['Todo','Attempted','Solved','Revisit'].map(o=>h('option',{},o)));
+  st.value=i.status||'Todo';st.style.width='auto';
+  const ck=[['Brute force',i.brute],['Bottleneck',i.bottleneck],['Key insight',i.insight],['Edge cases',i.edge]].filter(x=>x[1]);
+  const next=(i.cue||ck.length)?h('div',{class:'kv'},
+    i.cue&&h('div',{},h('b',{},'How to recognise it'),h('p',{class:'n'},i.cue)),
+    ...ck.map(([k,v])=>h('div',{},h('b',{},k),h('p',{class:'n'},v)))):null;
+  const vers=(i.versions||[]).length?h('div',{},...i.versions.map((v,k)=>h('details',{},
+    h('summary',{},(v.name||'Version')+((v.time||v.space)?` · ${v.time||'—'} time, ${v.space||'—'} space`:'')),
+    (v.time||v.space)&&h('p',{class:'n'},`Time: ${v.time||'—'}   Space: ${v.space||'—'}`),v.note&&h('p',{class:'n'},v.note),codeTabs(v),v.trace&&h('div',{},h('h3',{},'Small dry run'),rich(v.trace),traceTools(i,k))))):null;
+  const revSec=revBlock(i);
+  const iqs=(i.interview||[]).length?h('div',{},...i.interview.map(x=>h('details',{},h('summary',{},x.q),
+    x.kind&&h('div',{style:'margin:6px 0'},h('span',{class:'badge'},x.kind)),h('p',{class:'n'},x.a)))):null;
+  const rel=(i.related||[]).length?h('ul',{class:'rel'},...i.related.map(r=>{const hv=relHave(relParse(r));return h('li',{},r,hv?h('span',{class:'badge link',style:'margin-left:6px',onclick:()=>view(hv.id)},hv.status==='Solved'?'Solved ✓':'In tracker'):null)})):null;
+  modal(
+    h('div',{class:'row'},h('h1',{style:'flex:1'},i.title),h('button',{onclick:close},'Close')),
+    h('div',{class:'row',style:'margin:8px 0'},i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),
+      i.pattern&&h('span',{class:'badge link',onclick:()=>patView(i.pattern)},'◆ '+i.pattern),i.topic&&h('span',{class:'badge'},i.topic),st,
+      i.url&&h('a',{href:i.url,target:'_blank',rel:'noopener'},'Open problem ↗')),
+    i.tags&&h('div',{class:'sub'},'Tags: '+i.tags),
+    sec('Revision',revSec),
+    sec('Next time: how to approach it',next),
+    (i.time||i.space)?sec('Complexity (final solution)',h('p',{class:'n'},`Time: ${i.time||'—'}   Space: ${i.space||'—'}`)):null,
+    sec('Approach',i.approach&&h('p',{class:'n'},i.approach)),
+    sec('Solution (final)',(i.java||i.js||i.ts)?codeTabs(i):null),
+    sec('Alternate approaches',vers),
+    sec('Trace (dry run)',(i.trace||i.traceInput)?h('div',{},i.traceInput&&h('p',{class:'n'},'Input: '+i.traceInput),rich(i.trace),traceTools(i,-1)):null),
+    sec('Interview questions',iqs),
+    sec('Related problems',rel),
+    sec('Notes / mistakes',i.notes&&h('p',{class:'n'},i.notes)),
+    h('div',{class:'row',style:'margin-top:18px'},h('button',{class:'p',onclick:()=>form(i)},'Edit'),
+      h('button',{class:'d',onclick:async()=>{if(confirm('Delete this problem?')){await del(i.id);close()}}},'Delete'))
+  );
+}
+function form(i,pre){
+  const e=i||{id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:'Todo',difficulty:'Medium',created:Date.now(),...(pre||{})};
+  const F={},vs=[],qs=[];
+  const fld=(k,lab,el,w)=>{F[k]=el;if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;else if(e[k]!=null)el.value=e[k];return h('div',{class:w?'w':''},h('label',{},lab),el)};
+  const sel=(...o)=>h('select',{},...o.map(x=>h('option',{},x)));
+  const selB=(...o)=>h('select',{},h('option',{value:''},'—'),...o.map(x=>h('option',{},x)));
+  const ta=(r,code,ph)=>{const a={rows:r,placeholder:ph||''};if(code){a.class='code';a.spellcheck='false';a.onkeydown=tabKey}return h('textarea',a)};
+  const vbox=h('div',{class:'w'});
+  const addV=(v={})=>{
+    const f={},mk=(k,ph,r,code)=>{const el=r?ta(r,code,ph):h('input',{placeholder:ph});el.value=v[k]||'';f[k]=el;return el};
+    const b=h('div',{class:'vb'},
+      h('div',{class:'row'},mk('name','Name, e.g. Brute force'),mk('time','Time'),mk('space','Space'),
+        h('button',{class:'d',onclick:()=>{b.remove();vs.splice(vs.indexOf(f),1)}},'Remove')),
+      mk('note','Idea, and what it trades off',2),mk('trace','Small dry run: an input line, then a table like | i | x | and |---|---|',5,1),mk('java','Java',6,1),mk('js','JavaScript',6,1),mk('ts','TypeScript',6,1));
+    vs.push(f);vbox.append(b)};
+  (e.versions||[]).forEach(addV);
+  const qbox=h('div',{class:'w'});
+  const addQ=(v={})=>{
+    const f={q:h('input',{placeholder:'A question an interviewer might ask'}),kind:h('select',{},...KINDS.map(k=>h('option',{},k))),a:ta(3,0,'Short model answer')};
+    f.q.value=v.q||'';f.kind.value=v.kind||KINDS[0];f.a.value=v.a||'';f.kind.style.width='auto';
+    const b=h('div',{class:'vb'},h('div',{class:'row'},f.q,f.kind,h('button',{class:'d',onclick:()=>{b.remove();qs.splice(qs.indexOf(f),1)}},'Remove')),f.a);
+    qs.push(f);qbox.append(b)};
+  (e.interview||[]).forEach(addQ);
+  const relTa=ta(4,0,'142. Linked List Cycle II: find where the cycle starts');relTa.value=(e.related||[]).join('\n');
+  modal(
+    h('h1',{},i?'Edit problem':'Add problem'),
+    h('div',{class:'f',style:'margin-top:12px'},
+      fld('title','Title *',h('input',{placeholder:'e.g. Two Sum'}),1),
+      fld('url','Link (LeetCode, GFG…)',h('input',{placeholder:'https://…'}),1),
+      fld('difficulty','Difficulty',sel('Easy','Medium','Hard')),
+      fld('status','Status',sel('Todo','Attempted','Solved','Revisit')),
+      fld('topic','Topic',h('input',{list:'tl',placeholder:'Arrays'})),
+      fld('pattern','Pattern',h('input',{list:'pl',placeholder:'Sliding Window'})),
+      fld('tags','Tags (comma separated)',h('input',{placeholder:'hashing, interview'}),1),
+      h('h3',{},'Next time: how to approach it'),
+      fld('cue','How I recognise this kind of problem',ta(2,0,'Clues in the statement that point to the pattern'),1),
+      fld('brute','Brute force',ta(2)),fld('bottleneck','Bottleneck',ta(2)),
+      fld('insight','Key insight',ta(2)),fld('edge','Edge cases',ta(2)),
+      h('h3',{},'Final solution'),
+      fld('time','Time complexity',h('input',{placeholder:'O(n)'})),
+      fld('space','Space complexity',h('input',{placeholder:'O(n)'})),
+      fld('approach','Approach / intuition',ta(3),1),
+      fld('java','Java',ta(10,1,'class Solution { … }'),1),
+      fld('js','JavaScript',ta(10,1,'function solve() { … }'),1),
+      fld('ts','TypeScript',ta(10,1,'function solve(): void { … }'),1),
+      h('h3',{},'Alternate approaches (brute force, better, other ways)'),
+      vbox,h('div',{class:'w'},h('button',{onclick:()=>addV()},'+ Add alternate approach')),
+      h('h3',{},'Trace (dry run)'),
+      fld('traceInput','Sample input',h('input',{placeholder:'nums = [2,7,11,15], target = 9'}),1),
+      fld('trace','Paste a table like  | Step | i | map |  then rows',ta(8,1,'| Step | i | need | map |\n|---|---|---|---|\n| 1 | 0 | 7 | {} |'),1),
+      h('h3',{},'Interview questions (follow-ups, concepts, trade-offs)'),
+      qbox,h('div',{class:'w'},h('button',{onclick:()=>addQ()},'+ Add interview question')),
+      h('div',{class:'w'},h('label',{},'Related problems, one per line (e.g. 142. Linked List Cycle II: find where the cycle starts)'),relTa),
+      h('h3',{},'Revision (the Log a revision button on the problem page fills these in for you)'),
+      fld('lastRevised','Last revised',h('input',{type:'date'})),
+      fld('nextRevision','Next revision',h('input',{type:'date'})),
+      fld('recall','Recall level',selB('Red','Yellow','Green')),
+      fld('solvedWithoutHelp','Solved without help',selB('Yes','No')),
+      fld('timeTaken','Time taken (minutes)',h('input',{type:'number',min:'0'})),
+      fld('mistakeType','Mistake type',selB(...MISTAKES)),
+      fld('mentalModel','Mental model recalled',selB(...MODELS)),
+      h('h3',{},'Notes'),
+      fld('notes','Notes, mistakes',ta(3),1)),
+    h('datalist',{id:'tl'},...TOPICS.map(t=>h('option',{value:t}))),
+    h('datalist',{id:'pl'},...patNames().map(t=>h('option',{value:t}))),
+    h('div',{class:'row',style:'margin-top:16px'},
+      h('button',{class:'p',onclick:async()=>{
+        const o={...e};for(const k in F)o[k]=F[k].value.trim();
+        if(!o.title){F.title.focus();return}
+        o.versions=vs.map(f=>Object.fromEntries(Object.entries(f).map(([k,el])=>[k,el.value.trim()]))).filter(v=>v.name||v.java||v.js||v.ts);
+        o.interview=qs.map(f=>({q:f.q.value.trim(),kind:f.kind.value,a:f.a.value.trim()})).filter(x=>x.q);
+        o.related=relTa.value.split('\n').map(x=>x.trim()).filter(Boolean);
+        if(o.timeTaken!==undefined&&o.timeTaken!=='')o.timeTaken=Number(o.timeTaken);
+        stripRev(o);
+        await save(o);i?view(o.id):close();
+      }},'Save'),h('button',{onclick:()=>i?view(i.id):close()},'Cancel'))
+  );
+  F.title.focus();
+}
+function patView(n){
+  const s=PR().find(p=>p.title===n)||{title:n},ps=P().filter(i=>i.pattern===n);
+  modal(
+    h('div',{class:'row'},h('h1',{style:'flex:1'},n),h('button',{onclick:close},'Close')),
+    sec('How to recognise it',h('p',{class:'n'},s.cues||CUES[n]||'Not written yet. Click Edit to add.')),
+    sec('Common pitfalls',s.pitfalls&&h('p',{class:'n'},s.pitfalls)),
+    sec('Template',(s.java||s.js||s.ts)?codeTabs(s):null),
+    h('h3',{},`Your problems (${ps.length})`),
+    ...(ps.length?ps.map(i=>h('div',{class:'item',onclick:()=>view(i.id)},h('div',{class:'row'},h('span',{class:'t'},i.title),
+      i.difficulty&&h('span',{class:'badge '+i.difficulty},i.difficulty),h('span',{class:'badge '+i.status},i.status||'Todo')))):[h('div',{class:'sub'},'None yet. Set this pattern when you add a problem.')]),
+    h('div',{class:'row',style:'margin-top:18px'},h('button',{class:'p',onclick:()=>patForm(n)},'Edit'),
+      s.id&&h('button',{class:'d',onclick:async()=>{if(confirm('Delete your saved notes for this pattern?')){await del(s.id);close()}}},'Delete notes'))
+  );
+}
+function patForm(n){
+  const s=(n&&PR().find(p=>p.title===n))||{kind:'pattern',title:n||''};
+  const F={};
+  const fld=(k,lab,el)=>{F[k]=el;el.value=s[k]??(k==='cues'?(CUES[n]||''):'');return h('div',{},h('label',{},lab),el)};
+  const ta=(r,code)=>{const a={rows:r};if(code){a.class='code';a.spellcheck='false';a.onkeydown=tabKey}return h('textarea',a)};
+  modal(
+    h('h1',{},n?'Edit pattern':'Add pattern'),
+    h('div',{style:'display:grid;gap:10px;margin-top:12px'},
+      fld('title','Pattern name *',h('input',{placeholder:'e.g. Sliding Window'})),
+      fld('cues','How to recognise it',ta(3)),
+      fld('pitfalls','Common pitfalls',ta(3)),
+      fld('java','Java template',ta(10,1)),fld('js','JavaScript template',ta(10,1)),fld('ts','TypeScript template',ta(10,1))),
+    h('div',{class:'row',style:'margin-top:16px'},
+      h('button',{class:'p',onclick:async()=>{
+        const o={...s,kind:'pattern'};for(const k in F)o[k]=F[k].value.trim();
+        if(!o.title){F.title.focus();return}
+        o.id='pattern:'+slug(o.title);await save(o);patView(o.title)}},'Save'),
+      h('button',{onclick:()=>n?patView(n):close()},'Cancel'))
+  );
+  if(n)F.title.disabled=true;else F.title.focus();
+}
+
+$('#add').onclick=()=>form();
+$('#addp').onclick=()=>patForm();
+$('#tProb').onclick=()=>{tab='problems';render()};
+$('#tPat').onclick=()=>{tab='patterns';render()};
+$('#tInt').onclick=()=>{tab='interview';render()};
+$('#tRel').onclick=()=>{tab='related';render()};
+$('#tRev').onclick=()=>{tab='revise';render()};
+$('#tCodeSearch').onclick=()=>{tab='code';render();$('#cq').focus()};
+$('#rq').onclick=practice;
+['q','fTopic','fDiff','fStat','fLang','iq','ik','it','xq','xs','xsrc','xt','xo','rvq','rvs','rvr','rvm','cq','cl','cw','cs','cr'].forEach(id=>$('#'+id).addEventListener('input',render));
+['cl','cw','cs','cr'].forEach(id=>$('#'+id).addEventListener('change',render));
+$('#exp').onclick=()=>{
+  const u=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));
+  const a=h('a',{href:u,download:'dsa-tracker-backup.json'});document.body.append(a);a.click();a.remove();URL.revokeObjectURL(u);
+};
+$('#imp').onclick=()=>$('#impf').click();
+$('#impf').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const arr=JSON.parse(await f.text());
+    if(!Array.isArray(arr)||arr.some(x=>!x||!x.id||!x.title))throw new Error('not a valid backup file');
+    await api('PUT',arr);items=await api('GET');render();alert('Imported '+arr.length+' problems.');
+  }catch(err){alert('Import failed: '+err.message)}
+};
+$('#lock').onclick=()=>{localStorage.removeItem(PW);location.reload()};
+init();
+</script>
+</body>
+</html>
