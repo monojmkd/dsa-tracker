@@ -51,7 +51,7 @@ p.n{white-space:pre-wrap;margin:0}
 a{color:var(--acc)}
 table{border-collapse:collapse;font-size:13px;margin:6px 0;width:100%}
 th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;white-space:nowrap}th{background:var(--card)}
-.nav{display:flex;gap:6px;margin-bottom:14px}.nav button.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}.nav button.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
 .vb{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;background:var(--card);margin-bottom:8px}
 .vb .row input{flex:1;min-width:110px}
 .f h3{grid-column:1/-1;margin:10px 0 0}
@@ -66,6 +66,10 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 .bar4{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px}.bar4 input{grid-column:1/-1}
 .rc-Red{color:var(--hard);border-color:var(--hard)}.rc-Yellow{color:var(--med);border-color:var(--med)}.rc-Green{color:var(--easy);border-color:var(--easy)}
 .due{color:var(--hard);border-color:var(--hard);font-weight:600}
+input[type=checkbox]{width:auto;padding:0}
+.cbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:8px}.cbar #cq{grid-column:1/-1}
+.opts{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}.opts label{display:flex;gap:6px;align-items:center;font-size:13px;margin:0;cursor:pointer}
+pre.cx{padding:8px 0}.cl{display:flex;white-space:pre}.cl .no{flex:none;width:40px;text-align:right;padding-right:10px;color:var(--mute);user-select:none}.cl.hit{background:rgba(255,196,0,.25)}
 </style>
 </head>
 <body>
@@ -75,7 +79,7 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
     <div class="row"><button id="lock" title="Forget password on this device">Lock</button><button id="imp">Import</button><input type="file" id="impf" accept="application/json" hidden><button id="exp">Export</button><button class="p" id="add">+ Add problem</button></div>
   </header>
   <div id="mode"></div>
-  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button><button id="tRel">Related</button><button id="tRev">Revise</button></div>
+  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button><button id="tRel">Related</button><button id="tRev">Revise</button><button id="tCodeSearch">Code</button></div>
   <div id="pv">
   <div class="stats" id="stats"></div>
   <div class="bar">
@@ -108,6 +112,14 @@ details{background:var(--card);border:1px solid var(--line);border-radius:10px;p
       <select id="rvr"><option value="">Any recall level</option><option>Red</option><option>Yellow</option><option>Green</option><option value="none">Not rated</option></select>
       <select id="rvm"><option value="">Any mistake type</option><option>Concept</option><option>Logic</option><option>Syntax</option><option>Edge Case</option></select></div>
     <div id="rvl"></div>
+  </div>
+  <div id="codev" hidden>
+    <div class="sub" id="cc" style="margin-bottom:10px"></div>
+    <div class="cbar"><input id="cq" placeholder="Paste or type code, e.g. fast.next.next or while (left < right)">
+      <select id="cl"><option value="">All languages</option><option value="java">Java</option><option value="js">JavaScript</option><option value="ts">TypeScript</option></select>
+      <select id="cw"><option value="">Solutions, alternates and templates</option><option value="sol">Solutions only</option><option value="alt">Alternate approaches only</option><option value="pat">Pattern templates only</option></select></div>
+    <div class="opts"><label><input type="checkbox" id="cs"> Match case</label><label><input type="checkbox" id="cr"> Regular expression</label></div>
+    <div id="cres"></div>
   </div>
 </div>
 <div id="ovr"></div>
@@ -202,6 +214,132 @@ function practice(){
     h('div',{class:'row',style:'margin-top:14px'},h('button',{onclick:next},'Next question'),h('button',{onclick:()=>view(cur.p.id)},'Open problem')));
   const next=()=>{cur=pool[Math.floor(Math.random()*pool.length)];show(false)};
   modal(h('div',{class:'row'},h('h1',{style:'flex:1'},'Practice'),h('button',{onclick:close},'Close')),body);next();
+}
+
+/* ---- dry-run diagram: each step becomes a card, arrows join the steps, changed values are highlighted ---- */
+const xe=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function wrapTxt(s,max){
+  const out=[];let line='';
+  for(let w of String(s).split(/\s+/).filter(Boolean)){
+    while(w.length>max){if(line){out.push(line);line=''}out.push(w.slice(0,max));w=w.slice(max)}
+    if(!line)line=w;else if((line+' '+w).length<=max)line+=' '+w;else{out.push(line);line=w}
+  }
+  if(line)out.push(line);return out.length?out:[''];
+}
+function parseTrace(t){
+  const blocks=[];let tb=[],tx=[];
+  const flush=()=>{if(!tb.length)return;
+    const rows=tb.filter(r=>!/^[\s|:-]+$/.test(r)).map(r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));
+    if(rows.length>=2)blocks.push({heading:tx.join(' ').trim(),head:rows[0],rows:rows.slice(1)});
+    tx=[];tb=[]};
+  for(const l of String(t||'').split('\n')){
+    if(l.trim().startsWith('|'))tb.push(l);
+    else{if(tb.length)flush();if(l.trim())tx.push(l.trim())}
+  }
+  flush();
+  return {blocks,notes:tx};
+}
+function traceSvg(title,subtitle,text){
+  const {blocks,notes}=parseTrace(text);if(!blocks.length)return null;
+  const CW=240,GX=40,GY=36,PAD=24,PER=3,LH=15,HEAD=26,VW=7.3,LW=6.2,INNER=CW-24,W=PAD*2+PER*CW+(PER-1)*GX;
+  const MONO='ui-monospace,SFMono-Regular,Menlo,Consolas,&quot;DejaVu Sans Mono&quot;,monospace';
+  let y=PAD,b='';
+  const T=(x,yy,s,cls)=>'<text x="'+x+'" y="'+yy+'" class="'+cls+'">'+xe(s)+'</text>';
+  b+=T(PAD,y+18,title,'ti');y+=30;
+  if(subtitle){const sl=wrapTxt('Input: '+String(subtitle).replace(/^input:\s*/i,''),100);sl.forEach((l,k)=>b+=T(PAD,y+14+k*16,l,'su'));y+=sl.length*16+8}
+  y+=6;
+  for(const blk of blocks){
+    if(blk.heading){const hl=wrapTxt(blk.heading,100);hl.forEach((l,k)=>b+=T(PAD,y+14+k*17,l,'hd'));y+=hl.length*17+10}
+    const nc=blk.head.length,isText=[];
+    for(let c=1;c<nc;c++){const vals=blk.rows.map(r=>r[c]||'');isText[c]=vals.reduce((a,v)=>a+v.length,0)/vals.length>24||vals.filter(v=>v.split(/\s+/).length>=5).length>vals.length/2}
+    const cards=blk.rows.map((r,ri)=>{
+      const prev=ri?blk.rows[ri-1]:null,t0=r[0]||'',h0=blk.head[0]||'';
+      const ttl=!t0?h0:/^start$/i.test(t0)?'start':(/^[\w.\-]{1,10}$/.test(t0)?h0+' = '+t0:t0);
+      const items=[];let n=0;
+      for(let c=1;c<nc;c++){
+        const lab=blk.head[c]||'',val=r[c]||'';if(val==='')continue;
+        const changed=!!prev&&!isText[c]&&(prev[c]||'')!==val;
+        let lines;
+        if(isText[c])lines=[{lab,val:''},...wrapTxt(val,38).map(v=>({val:v,tx:1}))];
+        else if(lab.length*LW+10+val.length*VW<=INNER)lines=[{lab,val}];
+        else lines=[{lab,val:''},...wrapTxt(val,Math.floor(INNER/VW)).map(v=>({val:v}))];
+        items.push({lines,changed});n+=lines.length}
+      return {ttl,items,h:HEAD+14+n*LH+6};
+    });
+    const pos=[];
+    for(let s=0;s<cards.length;s+=PER){
+      const row=cards.slice(s,s+PER),rh=Math.max(...row.map(c=>c.h));
+      row.forEach((c,k)=>pos.push({c,x:PAD+k*(CW+GX),y,h:rh}));y+=rh+GY;
+    }
+    for(const p of pos){
+      const {c,x,y:yy,h}=p;
+      b+='<rect x="'+x+'" y="'+yy+'" width="'+CW+'" height="'+h+'" rx="8" class="cd"/>';
+      b+='<rect x="'+x+'" y="'+yy+'" width="'+CW+'" height="'+HEAD+'" rx="8" class="ch"/><rect x="'+x+'" y="'+(yy+HEAD/2)+'" width="'+CW+'" height="'+(HEAD/2)+'" class="ch"/>';
+      b+=T(x+12,yy+17,c.ttl,'ct');
+      let ly=yy+HEAD+16;
+      for(const it of c.items){
+        if(it.changed)b+='<rect x="'+(x+5)+'" y="'+(ly-11)+'" width="3" height="'+(it.lines.length*LH-2)+'" rx="1.5" class="cm"/>';
+        it.lines.forEach(ln=>{
+          let t='<text x="'+(x+12)+'" y="'+ly+'">';
+          if(ln.lab!==undefined)t+='<tspan class="lb">'+xe(ln.lab)+(ln.val?': ':'')+'</tspan>';
+          if(ln.val)t+='<tspan class="'+(ln.tx?'tx':it.changed?'vc':'v')+'">'+xe(ln.val)+'</tspan>';
+          b+=t+'</text>';ly+=LH;
+        });
+      }
+    }
+    pos.forEach((p,k)=>{
+      if(k+1>=pos.length)return;const q=pos[k+1];
+      if(q.y===p.y)b+='<line x1="'+(p.x+CW+3)+'" y1="'+(p.y+HEAD/2)+'" x2="'+(q.x-3)+'" y2="'+(p.y+HEAD/2)+'" class="ar" marker-end="url(#ah)"/>';
+      else{const sx=p.x+CW/2,sy=p.y+p.h+2,ex=q.x+CW/2,ey=q.y-4,my=sy+(GY-6)/2;b+='<path d="M'+sx+' '+sy+' V'+my+' H'+ex+' V'+ey+'" class="ar" fill="none" marker-end="url(#ah)"/>'}
+    });
+    y=y-GY+18;
+  }
+  if(notes.length){
+    const nl=[];notes.forEach(n=>{const good=/^(return|result|answer|so the answer|the answer)/i.test(n);wrapTxt(n,108).forEach(l=>nl.push({l,good}))});
+    const bh=nl.length*18+16;
+    b+='<rect x="'+PAD+'" y="'+y+'" width="'+(W-PAD*2)+'" height="'+bh+'" rx="8" class="nb"/>';
+    nl.forEach((n,k)=>b+=T(PAD+14,y+22+k*18,n.l,n.good?'ng':'nt'));
+    y+=bh+14;
+  }
+  b+='<text x="'+PAD+'" y="'+(y+10)+'" class="lg">A highlighted value changed since the previous step</text><text x="'+(W-PAD)+'" y="'+(y+10)+'" class="lg" text-anchor="end">DSA Tracker</text>';
+  const H=y+10+PAD;
+  const css='text{font-family:-apple-system,&quot;Segoe UI&quot;,Roboto,Helvetica,Arial,sans-serif}.ti{font-size:20px;font-weight:700;fill:#0f172a}.su{font-size:12.5px;fill:#475569}.hd{font-size:14px;font-weight:700;fill:#1e293b}.cd{fill:#fff;stroke:#cbd5e1;stroke-width:1.2}.ch{fill:#eef2f7}.ct{font-size:13px;font-weight:700;fill:#0f172a}.lb{font-size:11px;fill:#64748b}.v{font-family:'+MONO+';font-size:12px;fill:#1e293b}.vc{font-family:'+MONO+';font-size:12px;font-weight:700;fill:#b45309}.tx{font-size:11.5px;fill:#334155}.cm{fill:#f59e0b}.ar{stroke:#94a3b8;stroke-width:1.6}.nb{fill:#f8fafc;stroke:#e2e8f0}.nt{font-size:13px;fill:#334155}.ng{font-size:13px;font-weight:700;fill:#15803d}.lg{font-size:11px;fill:#94a3b8}';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'"><defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker><style>'+css+'</style></defs><rect width="'+W+'" height="'+H+'" fill="#ffffff"/>'+b+'</svg>';
+  return {svg,w:W,h:H};
+}
+function svgToPng(svg,w,h,scale){
+  scale=scale||2;
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>{const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);c.toBlob(bl=>bl?res(bl):rej(new Error('png')),'image/png')};
+    img.onerror=()=>rej(new Error('image'));
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  });
+}
+const slugF=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+function traceInfo(i,vi){
+  const v=vi>=0?i.versions[vi]:null;
+  return v?{title:i.title+' · '+v.name,sub:'',text:v.trace}:{title:i.title+' · dry run',sub:i.traceInput||'',text:i.trace};
+}
+const traceFile=(i,vi,ext)=>slugF(i.title)+(vi>=0?'-alt'+(vi+1):'')+'-dry-run.'+ext;
+function dl(blob,name){const u=URL.createObjectURL(blob);const a=h('a',{href:u,download:name});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+async function savePng(i,vi){
+  const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;
+  try{dl(await svgToPng(d.svg,d.w,d.h),traceFile(i,vi,'png'))}catch(e){alert('Could not make the PNG in this browser. Use Save SVG instead.')}
+}
+function saveSvg(i,vi){const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;dl(new Blob([d.svg],{type:'image/svg+xml'}),traceFile(i,vi,'svg'))}
+function traceTools(i,vi){
+  const t=traceInfo(i,vi);if(!parseTrace(t.text).blocks.length)return null;
+  return h('div',{class:'row',style:'margin:8px 0 2px'},
+    h('button',{onclick:()=>diagramView(i.id,vi)},'View as diagram'),h('button',{onclick:()=>savePng(i,vi)},'Save PNG'),h('button',{onclick:()=>saveSvg(i,vi)},'Save SVG'));
+}
+function diagramView(id,vi){
+  const i=items.find(x=>x.id===id);if(!i)return;
+  const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;
+  modal(
+    h('div',{class:'row'},h('h1',{style:'flex:1'},'Dry run diagram'),h('button',{onclick:()=>view(id)},'Back'),h('button',{onclick:close},'Close')),
+    h('div',{style:'overflow-x:auto;margin-top:10px'},h('img',{src:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(d.svg),alt:'Dry run diagram for '+i.title,style:'max-width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#fff'})),
+    h('div',{class:'row',style:'margin-top:12px'},h('button',{class:'p',onclick:()=>savePng(i,vi)},'Save PNG'),h('button',{onclick:()=>saveSvg(i,vi)},'Save SVG')));
 }
 
 const REVF=['lastRevised','nextRevision','recall','solvedWithoutHelp','timeTaken','mistakeType','mentalModel'];
@@ -355,10 +493,72 @@ function renderRel(){
   $('#xl').replaceChildren(...(res.length?res.map(relRow):[h('div',{class:'empty'},all.length?'No related problems match these filters.':'No related problems yet. They appear here once your problems list related problems.')]));
 }
 
+const CODELANGS=[['java','Java'],['js','JavaScript'],['ts','TypeScript']];
+function codeSources(){
+  const out=[];
+  P().forEach(p=>{
+    CODELANGS.forEach(([k,n])=>{if(p[k])out.push({title:p.title,label:'Solution',kind:'sol',lang:k,langName:n,code:p[k],open:()=>view(p.id)})});
+    (p.versions||[]).forEach(v=>CODELANGS.forEach(([k,n])=>{if(v[k])out.push({title:p.title,label:v.name?'Alternate: '+v.name:'Alternate approach',kind:'alt',lang:k,langName:n,code:v[k],open:()=>view(p.id)})}));
+  });
+  PR().forEach(p=>CODELANGS.forEach(([k,n])=>{if(p[k])out.push({title:p.title,label:'Pattern template',kind:'pat',lang:k,langName:n,code:p[k],open:()=>patView(p.title)})}));
+  return out;
+}
+// returns [{s,e}] = first and last line (0-based) of each match
+function codeFind(code,q,opt){
+  const lines=code.split('\n'),out=[];
+  if(opt.regex){
+    let re;try{re=new RegExp(q,'gm'+(opt.cs?'':'i'))}catch(e){throw new Error('That is not a valid regular expression.')}
+    const offs=[];let o=0;for(const l of lines){offs.push(o);o+=l.length+1}
+    const lineOf=i=>{let lo=0,hi=offs.length-1;while(lo<hi){const mid=(lo+hi+1)>>1;if(offs[mid]<=i)lo=mid;else hi=mid-1}return lo};
+    let m;while((m=re.exec(code))&&out.length<50){out.push({s:lineOf(m.index),e:lineOf(m.index+Math.max(m[0].length-1,0))});if(m[0].length===0)re.lastIndex++}
+    return out;
+  }
+  const norm=t=>opt.cs?t:t.toLowerCase();
+  const qc=norm(q).replace(/\s+/g,'');if(!qc)return out;
+  let comp='';const lineIdx=[];
+  lines.forEach((l,li)=>{for(const ch of l){if(/\s/.test(ch))continue;const t=norm(ch);for(let k=0;k<t.length;k++){comp+=t[k];lineIdx.push(li)}}});
+  let from=0;while(out.length<50){const i=comp.indexOf(qc,from);if(i<0)break;out.push({s:lineIdx[i],e:lineIdx[i+qc.length-1]});from=i+qc.length}
+  return out;
+}
+function excerpt(code,hits){
+  const lines=code.split('\n'),hit=new Set(),show=new Set();
+  hits.forEach(m=>{for(let i=m.s;i<=m.e;i++)hit.add(i)});
+  hit.forEach(i=>{for(let d=-1;d<=1;d++){const j=i+d;if(j>=0&&j<lines.length)show.add(j)}});
+  const rows=[];let prev=-2;
+  for(const i of [...show].sort((a,b)=>a-b)){
+    if(prev>=0&&i>prev+1)rows.push(h('div',{class:'cl'},h('span',{class:'no'},'…')));
+    rows.push(h('div',{class:'cl'+(hit.has(i)?' hit':'')},h('span',{class:'no'},String(i+1)),lines[i]===''?' ':lines[i]));prev=i;
+  }
+  return h('pre',{class:'cx'},...rows);
+}
+function codeRow({s,m}){
+  const cp=h('button',{onclick:()=>{navigator.clipboard?.writeText(s.code);cp.textContent='Copied';setTimeout(()=>cp.textContent='Copy full code',1200)}},'Copy full code');
+  return h('div',{class:'item',style:'cursor:default'},
+    h('div',{class:'row'},h('span',{class:'t'},s.title),h('span',{class:'badge'},s.langName),h('span',{class:'badge'},s.label),h('span',{class:'badge'},m.length+(m.length===1?' match':' matches'))),
+    excerpt(s.code,m),
+    h('div',{class:'row',style:'margin-top:8px'},cp,h('button',{onclick:s.open},'Open')));
+}
+function renderCode(){
+  if(tab!=='code')return;
+  const raw=$('#cq').value,lang=$('#cl').value,where=$('#cw').value,opt={cs:$('#cs').checked,regex:$('#cr').checked};
+  const src=codeSources().filter(x=>(!lang||x.lang===lang)&&(!where||x.kind===where));
+  const info=$('#cc'),list=$('#cres');
+  if(!raw.trim()){
+    info.textContent='Search inside '+src.length+' code snippets from '+new Set(src.map(x=>x.title)).size+' problems and patterns. Spaces and line breaks are ignored, so code pasted with different formatting still matches. Tick Regular expression to match exactly as typed.';
+    list.replaceChildren();return;
+  }
+  const res=[];
+  try{for(const x of src){const m=codeFind(x.code,raw,opt);if(m.length)res.push({s:x,m})}}
+  catch(e){info.textContent=e.message;list.replaceChildren();return}
+  const CAP=100;
+  info.textContent=res.length+(res.length===1?' snippet matches':' snippets match')+(res.length>CAP?' (showing the first '+CAP+', narrow the search to see the rest)':'');
+  list.replaceChildren(...(res.length?res.slice(0,CAP).map(codeRow):[h('div',{class:'empty'},'No code matches.')]));
+}
+
 function render(){
   if(!ready)return;
-  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';$('#tInt').className=tab==='interview'?'on':'';$('#tRel').className=tab==='related'?'on':'';$('#tRev').className=tab==='revise'?'on':'';
-  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';$('#intv').hidden=tab!=='interview';$('#relv').hidden=tab!=='related';$('#revv').hidden=tab!=='revise';
+  $('#tProb').className=tab==='problems'?'on':'';$('#tPat').className=tab==='patterns'?'on':'';$('#tInt').className=tab==='interview'?'on':'';$('#tRel').className=tab==='related'?'on':'';$('#tRev').className=tab==='revise'?'on':'';$('#tCodeSearch').className=tab==='code'?'on':'';
+  $('#pv').hidden=tab!=='problems';$('#patv').hidden=tab!=='patterns';$('#intv').hidden=tab!=='interview';$('#relv').hidden=tab!=='related';$('#revv').hidden=tab!=='revise';$('#codev').hidden=tab!=='code';
   const A=P();
   const topics=[...new Set(A.map(i=>i.topic).filter(Boolean))].sort();
   const ft=$('#fTopic'),cur=ft.value;
@@ -374,7 +574,7 @@ function render(){
     if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.ts,i.topic,i.pattern,i.cue,i.insight,i.mistakeType,i.recall,(i.interview||[]).map(x=>x.q+' '+x.a).join(' '),(i.related||[]).join(' '),(i.versions||[]).map(v=>[v.name,v.java,v.js,v.ts].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
     return true}).sort((a,b)=>(b.updated||0)-(a.updated||0));
   $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},A.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
-  renderPats();renderInt();renderRel();renderRevise();
+  renderPats();renderInt();renderRel();renderRevise();renderCode();
 }
 function card(i){
   return h('div',{class:'item',onclick:()=>view(i.id)},
@@ -402,9 +602,9 @@ function view(id){
   const next=(i.cue||ck.length)?h('div',{class:'kv'},
     i.cue&&h('div',{},h('b',{},'How to recognise it'),h('p',{class:'n'},i.cue)),
     ...ck.map(([k,v])=>h('div',{},h('b',{},k),h('p',{class:'n'},v)))):null;
-  const vers=(i.versions||[]).length?h('div',{},...i.versions.map(v=>h('details',{},
+  const vers=(i.versions||[]).length?h('div',{},...i.versions.map((v,k)=>h('details',{},
     h('summary',{},(v.name||'Version')+((v.time||v.space)?` · ${v.time||'—'} time, ${v.space||'—'} space`:'')),
-    (v.time||v.space)&&h('p',{class:'n'},`Time: ${v.time||'—'}   Space: ${v.space||'—'}`),v.note&&h('p',{class:'n'},v.note),codeTabs(v),v.trace&&h('div',{},h('h3',{},'Small dry run'),rich(v.trace))))):null;
+    (v.time||v.space)&&h('p',{class:'n'},`Time: ${v.time||'—'}   Space: ${v.space||'—'}`),v.note&&h('p',{class:'n'},v.note),codeTabs(v),v.trace&&h('div',{},h('h3',{},'Small dry run'),rich(v.trace),traceTools(i,k))))):null;
   const revSec=revBlock(i);
   const iqs=(i.interview||[]).length?h('div',{},...i.interview.map(x=>h('details',{},h('summary',{},x.q),
     x.kind&&h('div',{style:'margin:6px 0'},h('span',{class:'badge'},x.kind)),h('p',{class:'n'},x.a)))):null;
@@ -421,7 +621,7 @@ function view(id){
     sec('Approach',i.approach&&h('p',{class:'n'},i.approach)),
     sec('Solution (final)',(i.java||i.js||i.ts)?codeTabs(i):null),
     sec('Alternate approaches',vers),
-    sec('Trace (dry run)',(i.trace||i.traceInput)?h('div',{},i.traceInput&&h('p',{class:'n'},'Input: '+i.traceInput),rich(i.trace)):null),
+    sec('Trace (dry run)',(i.trace||i.traceInput)?h('div',{},i.traceInput&&h('p',{class:'n'},'Input: '+i.traceInput),rich(i.trace),traceTools(i,-1)):null),
     sec('Interview questions',iqs),
     sec('Related problems',rel),
     sec('Notes / mistakes',i.notes&&h('p',{class:'n'},i.notes)),
@@ -551,8 +751,10 @@ $('#tPat').onclick=()=>{tab='patterns';render()};
 $('#tInt').onclick=()=>{tab='interview';render()};
 $('#tRel').onclick=()=>{tab='related';render()};
 $('#tRev').onclick=()=>{tab='revise';render()};
+$('#tCodeSearch').onclick=()=>{tab='code';render();$('#cq').focus()};
 $('#rq').onclick=practice;
-['q','fTopic','fDiff','fStat','fLang','iq','ik','it','xq','xs','xsrc','xt','xo','rvq','rvs','rvr','rvm'].forEach(id=>$('#'+id).addEventListener('input',render));
+['q','fTopic','fDiff','fStat','fLang','iq','ik','it','xq','xs','xsrc','xt','xo','rvq','rvs','rvr','rvm','cq','cl','cw','cs','cr'].forEach(id=>$('#'+id).addEventListener('input',render));
+['cl','cw','cs','cr'].forEach(id=>$('#'+id).addEventListener('change',render));
 $('#exp').onclick=()=>{
   const u=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));
   const a=h('a',{href:u,download:'dsa-tracker-backup.json'});document.body.append(a);a.click();a.remove();URL.revokeObjectURL(u);

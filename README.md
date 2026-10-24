@@ -13,6 +13,7 @@ It is a small static web page plus one serverless function, backed by a Postgres
 - [The five tabs](#the-five-tabs)
 - [How to track a problem](#how-to-track-a-problem)
 - [Revision tracking](#revision-tracking)
+- [Dry-run diagrams](#dry-run-diagrams)
 - [Deploy your own](#deploy-your-own)
 - [Configuration](#configuration)
 - [Using another host or database](#using-another-host-or-database)
@@ -28,7 +29,7 @@ For every problem you can store:
 
 - **Your solution in three languages**: Java, JavaScript and TypeScript, side by side with a Copy button.
 - **Complexity** (time and space) and a short description of the approach.
-- **A dry run**: a trace table for a small input, so you can see why it works instead of re-deriving it. Paste a markdown table and it renders as a real table.
+- **A dry run**: a trace table for a small input, so you can see why it works instead of re-deriving it. Paste a markdown table and it renders as a real table, and one click turns it into a **diagram** you can save as a PNG or SVG.
 - **Alternate approaches**: brute force, a better way, a different technique. Each has its own complexity, code in all three languages and its own small dry run.
 - **"Next time" notes**: the clue that points to the pattern, the brute force, the bottleneck, the key insight and the edge cases.
 - **Interview questions**: follow-ups, concept checks, complexity, edge cases and trade-offs, each with a short model answer.
@@ -68,7 +69,7 @@ A typical loop looks like this.
    - **Pattern**: the technique, not the problem name (for example *Two Pointers*).
    - **How I recognise it**: the clue in the statement that points to the pattern.
    - **Brute force, bottleneck, key insight, edge cases**: one line each.
-   - **Trace**: a small input and a markdown table of the steps (header row, a `|---|` row, one row per step).
+   - **Trace**: a small input and a markdown table of the steps (header row, a `|---|` row, one row per step). Use **View as diagram** or **Save PNG** afterwards to turn it into a picture.
    - **Alternate approaches**: use **+ Add alternate approach** for each other way to solve it.
 4. **Add interview questions and related problems** with **+ Add interview question** and the related-problems box (one per line, like `142. Linked List Cycle II: find where the cycle starts`).
 5. **Set the status**: Todo, Attempted, Solved or Revisit.
@@ -109,6 +110,17 @@ The next revision date is suggested from the recall level, and you can change it
 | Green | 7 days, then 14, 30 and 60 for repeated Greens in a row |
 
 A Red or Yellow resets the Green streak. Overdue problems are flagged on their cards and counted in the top bar and on the Revise tab.
+
+## Dry-run diagrams
+
+Every dry run (the main trace and each alternate approach's trace) has three buttons: **View as diagram**, **Save PNG** and **Save SVG**.
+
+- Each row of the trace table becomes a **step card**, and arrows join the steps in order, wrapping onto a new row every three cards.
+- A value that **changed since the previous step is highlighted**, so you can see the algorithm move instead of reading a grid of numbers.
+- Longer descriptions in a column (such as "what happens") are shown as plain text on the card. If a trace has several tables, each keeps its heading, and the closing lines such as "Return 3." appear in a note box at the bottom.
+- The diagram is drawn from the trace text, so it needs no extra data. Edit the trace and the diagram changes with it. Nothing is stored.
+- **PNG** is made in your browser at twice the size, on a white background, which is handy for notes and slides. **SVG** stays sharp at any size and can be edited in a vector tool.
+- Any trace written as a markdown table works. A trace with no table has no diagram buttons.
 
 ## Deploy your own
 
@@ -263,6 +275,7 @@ dsa-tracker/
 | The first load after a quiet period is slow | The free Neon database may be waking up. Wait a few seconds and it speeds up. |
 | Changes to environment variables have no effect | Variables are read at deploy time. Redeploy after changing them. |
 | Import says the file is not valid | It must be a JSON array, and every record needs an `id` and a `title`. |
+| Save PNG shows a message, or a download does nothing | Some browsers, mostly on phones, block the image export or the download. Try **Save SVG** or a desktop browser, or open **View as diagram** and long-press the image to save it. |
 | A trace shows as plain text | The table needs a header row, a separator row made of dashes, and every row must start with a pipe character. |
 
 ## FAQ
