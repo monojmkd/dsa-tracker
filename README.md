@@ -113,14 +113,46 @@ A Red or Yellow resets the Green streak. Overdue problems are flagged on their c
 
 ## Dry-run diagrams
 
-Every dry run (the main trace and each alternate approach's trace) has three buttons: **View as diagram**, **Save PNG** and **Save SVG**.
+Every dry run has three buttons: **View as diagram**, **Save PNG** and **Save SVG**. There are two kinds of picture, and the viewer has a **Structure / Step cards** switch when a problem has both.
 
-- Each row of the trace table becomes a **step card**, and arrows join the steps in order, wrapping onto a new row every three cards.
-- A value that **changed since the previous step is highlighted**, so you can see the algorithm move instead of reading a grid of numbers.
-- Longer descriptions in a column (such as "what happens") are shown as plain text on the card. If a trace has several tables, each keeps its heading, and the closing lines such as "Return 3." appear in a note box at the bottom.
-- The diagram is drawn from the trace text, so it needs no extra data. Edit the trace and the diagram changes with it. Nothing is stored.
-- **PNG** is made in your browser at twice the size, on a white background, which is handy for notes and slides. **SVG** stays sharp at any size and can be edited in a vector tool.
-- Any trace written as a markdown table works. A trace with no table has no diagram buttons.
+### Structure view
+Draws the data itself at every step, with the pointers sitting on it: an array or string as boxes with `i`, `left`, `right` or `w` markers, a linked list as nodes and arrows with `slow`, `fast`, `prev` or `curr` markers (and a loop-back arrow for a cycle), and a Set or map as chips. The pointer that just moved is shown in amber, a cell or node that changed is amber, matched or final items are green, and ignored ones are grey. Closing lines such as "Return 3." appear in a note box at the end.
+
+### Step cards
+Works for any trace table, with no extra data. Each table row becomes a card, arrows join the steps, and a value that changed since the previous step is highlighted. A problem with no stored frames uses this view.
+
+### Mental model
+Each problem can also have a **Mental model**: one picture of the idea behind the solution, with a one-line caption, shown on the problem page in a collapsed section ("try to recall it before you open it"). It pairs with the *Mental Model Recalled* revision field. It can be saved as PNG or SVG too.
+
+### Where the pictures come from
+Frames and models are stored on the problem, so they travel with your backups:
+
+| Field | What it is |
+|---|---|
+| `frames` | the structure at each step of the main dry run |
+| `framesInput` | the sample input as one clean line (shown under the title) |
+| `versions[k].frames` | the same for alternate approach k |
+| `model` | `{ title, caption, frames }` for the mental-model picture |
+
+Each frame is `{ title, note, items }`, and each item is one of:
+
+| `t` | Fields |
+|---|---|
+| `array` | `label`, `cells`, `ptr` (name to index), `hl`, `ok`, `dim` |
+| `list` | `chains`: each with `label`, `nodes`, `end` (`"null"`), `loop` (index of the node the last node points back to), `ptr`, `hl`, `ok`, `dim` |
+| `map` | `label`, `entries` (strings, or `[key, value]` pairs) |
+| `vars` | `vars` (name to value) |
+
+[`PROMPT.md`](PROMPT.md) describes the format in full, so an AI assistant can produce frames for new problems.
+
+### Adding pictures to problems you already have
+- **A diagrams-only patch file.** Entries look like `{ "id": "lc-141", "patch": true, "frames": [...], "framesInput": "...", "model": {...} }`. **Import** merges them into the existing problems and touches nothing else, so revisions you have logged and any edits you made are safe. Ids that do not exist are skipped, and the message tells you how many.
+- **By hand.** The problem form has a **Diagrams (advanced)** section with the frames and the model as editable JSON. Invalid JSON is refused. Clearing a box removes it.
+- Editing a problem never drops the frames stored on it or on its alternate approaches.
+
+### Saving
+- **PNG** is made in your browser at twice the size on a white background, which suits notes and slides. **SVG** stays sharp at any size.
+- A trace written as a markdown table always gets the step-card diagram. A problem with no table and no frames has no diagram buttons.
 
 ## Deploy your own
 
@@ -276,6 +308,7 @@ dsa-tracker/
 | Changes to environment variables have no effect | Variables are read at deploy time. Redeploy after changing them. |
 | Import says the file is not valid | It must be a JSON array, and every record needs an `id` and a `title`. |
 | Save PNG shows a message, or a download does nothing | Some browsers, mostly on phones, block the image export or the download. Try **Save SVG** or a desktop browser, or open **View as diagram** and long-press the image to save it. |
+| A dry run has no Structure view | Only problems with stored frames have it. Import a diagrams patch file, or add frames in the problem form. |
 | A trace shows as plain text | The table needs a header row, a separator row made of dashes, and every row must start with a pipe character. |
 
 ## FAQ

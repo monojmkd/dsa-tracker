@@ -317,29 +317,207 @@ function svgToPng(svg,w,h,scale){
   });
 }
 const slugF=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+/* ---- B: structure frames (what the data looks like at each step) and E: the mental-model picture ---- */
+const FMONO='ui-monospace,SFMono-Regular,Menlo,Consolas,&quot;DejaVu Sans Mono&quot;,monospace';
+function ptrGroups(ptr){
+  const g={};
+  for(const nm in (ptr||{})){const v=ptr[nm];(Array.isArray(v)?v:[v]).forEach(ix=>{if(typeof ix==='number'&&isFinite(ix))(g[ix]=g[ix]||[]).push(nm)})}
+  return g;
+}
+function placePtrs(groups,centerOf,allowBelow){
+  const keys=Object.keys(groups).map(Number).sort((a,b)=>a-b),ext={a0:[],b0:[],a1:[]},out=[];
+  for(const idx of keys){
+    const names=groups[idx],label=names.join(', '),w=label.length*6.6+10,cx=centerOf(idx),l=cx-w/2,r=cx+w/2;
+    const fits=k=>!ext[k].some(e=>l<e[1]+4&&r>e[0]-4);
+    let k='a0';
+    if(!fits('a0')){if(allowBelow&&fits('b0'))k='b0';else k='a1'}
+    ext[k].push([l,r]);out.push({idx,names,label,cx,side:k[0],lev:k==='a1'?1:0});
+  }
+  return out;
+}
+function ptrMetrics(pl){
+  const lev=pl.filter(p=>p.side==='a').reduce((m,p)=>Math.max(m,p.lev+1),0);
+  return {head:lev?(24+(lev-1)*15):4,below:pl.some(p=>p.side==='b')};
+}
+function ptrDraw(pl,top,bottom,prevPtr,ptr){
+  let s='';
+  for(const p of pl){
+    const moved=!!prevPtr&&p.names.some(n=>JSON.stringify(prevPtr[n])!==JSON.stringify((ptr||{})[n]));
+    const cls=moved?'pm':'pl',fill=moved?'pam':'pa';
+    if(p.side==='a'){
+      const ly=top-14-p.lev*15;
+      s+='<text x="'+p.cx+'" y="'+ly+'" class="'+cls+'" text-anchor="middle">'+xe(p.label)+'</text>';
+      if(p.lev)s+='<line x1="'+p.cx+'" y1="'+(ly+3)+'" x2="'+p.cx+'" y2="'+(top-11)+'" class="pln"/>';
+      s+='<path d="M'+(p.cx-4)+' '+(top-11)+' L'+(p.cx+4)+' '+(top-11)+' L'+p.cx+' '+(top-3)+' Z" class="'+fill+'"/>';
+    }else{
+      s+='<path d="M'+(p.cx-4)+' '+(bottom+24)+' L'+(p.cx+4)+' '+(bottom+24)+' L'+p.cx+' '+(bottom+16)+' Z" class="'+fill+'"/>';
+      s+='<text x="'+p.cx+'" y="'+(bottom+37)+'" class="'+cls+'" text-anchor="middle">'+xe(p.label)+'</text>';
+    }
+  }
+  return s;
+}
+function dArray(it,pv,x0,y0,aw){
+  const cells=(it.cells||[]).map(String),n=cells.length,lx=it.label?78:0,ptr=it.ptr||{},groups=ptrGroups(ptr),CH=36;
+  const idxs=Object.keys(groups).map(Number),minI=Math.min(0,...idxs),maxI=Math.max(n-1,...idxs);
+  const span=Math.max(1,maxI-minI+1),need=Math.max(1,...cells.map(c=>c.length));
+  let cw=Math.max(34,need*8+14);const avail=aw-lx;if(span*cw>avail)cw=Math.max(20,Math.floor(avail/span));
+  const sx=x0+lx-minI*cw,centerOf=i=>sx+i*cw+cw/2;
+  const pl=placePtrs(groups,centerOf,true),pm=ptrMetrics(pl),top=y0+pm.head;
+  const pc=pv&&pv.t==='array'&&pv.label===it.label&&Array.isArray(pv.cells)?pv.cells.map(String):null;
+  const hl=new Set(it.hl||[]),ok=new Set(it.ok||[]),dim=new Set(it.dim||[]);
+  let s='';
+  if(it.label)s+='<text x="'+x0+'" y="'+(top+CH/2+4)+'" class="lb2">'+xe(it.label)+'</text>';
+  for(const i of idxs)if(i<0||i>=n)s+='<rect x="'+(sx+i*cw+1)+'" y="'+top+'" width="'+(cw-2)+'" height="'+CH+'" rx="6" class="vc"/>';
+  cells.forEach((c,i)=>{
+    const cls=ok.has(i)?'okc':(hl.has(i)||(pc&&pc[i]!==c))?'chg':dim.has(i)?'dimc':'cc';
+    s+='<rect x="'+(sx+i*cw+1)+'" y="'+top+'" width="'+(cw-2)+'" height="'+CH+'" rx="6" class="'+cls+'"/>';
+    s+='<text x="'+(sx+i*cw+cw/2)+'" y="'+(top+CH/2+5)+'" class="'+(cls==='dimc'?'cxd':'cx')+'" text-anchor="middle">'+xe(c)+'</text>';
+    s+='<text x="'+(sx+i*cw+cw/2)+'" y="'+(top+CH+12)+'" class="ix" text-anchor="middle">'+((it.idx0||0)+i)+'</text>';
+  });
+  s+=ptrDraw(pl,top,top+CH,pv&&pv.ptr,ptr);
+  return {s,h:pm.head+CH+16+(pm.below?28:0)};
+}
+function dList(it,pv,x0,y0,aw){
+  let cy=y0,s='';const NH=30;
+  (it.chains||[]).forEach((ch,ci)=>{
+    const nodes=(ch.nodes||[]).map(String),n=nodes.length,lx=ch.label?78:0;
+    const pch=pv&&pv.t==='list'&&pv.chains&&pv.chains[ci]&&pv.chains[ci].label===ch.label?pv.chains[ci]:null;
+    let nws=nodes.map(t=>Math.max(34,t.length*8+14)),ar=24;
+    const total=nws.reduce((a,b)=>a+b,0)+Math.max(0,n-1)*ar+(ch.end==='null'?(n?ar:0)+34:0);
+    const sc=Math.min(1,(aw-lx)/Math.max(total,1));
+    nws=nws.map(w=>Math.max(26,Math.floor(w*sc)));ar=Math.max(14,Math.floor(ar*sc));
+    const xs=[];let px=x0+lx;nodes.forEach((t,k)=>{xs.push(px);px+=nws[k]+ar});
+    const nullX=n?px:x0+lx,hasLoop=typeof ch.loop==='number'&&n>0;
+    const groups=ptrGroups(ch.ptr),centerOf=i=>i<n?xs[i]+nws[i]/2:nullX+16;
+    const pl=placePtrs(groups,centerOf,!hasLoop),pm=ptrMetrics(pl),top=cy+pm.head;
+    const hl=new Set(ch.hl||[]),ok=new Set(ch.ok||[]),dim=new Set(ch.dim||[]);
+    if(ch.label)s+='<text x="'+x0+'" y="'+(top+19)+'" class="lb2">'+xe(ch.label)+'</text>';
+    const left={};if(pch)(pch.nodes||[]).forEach(t=>{t=String(t);left[t]=(left[t]||0)+1});
+    const fresh=new Set();if(pch&&ch.auto!==false)nodes.forEach((t,k)=>{if(left[t]>0)left[t]--;else fresh.add(k)});
+    nodes.forEach((t,k)=>{
+      const changed=fresh.has(k);
+      const cls=ok.has(k)?'okc':(hl.has(k)||changed)?'chg':dim.has(k)?'dimc':'cc';
+      s+='<rect x="'+xs[k]+'" y="'+top+'" width="'+nws[k]+'" height="'+NH+'" rx="8" class="'+cls+'"/>';
+      s+='<text x="'+(xs[k]+nws[k]/2)+'" y="'+(top+NH/2+5)+'" class="'+(cls==='dimc'?'cxd':'cx')+'" text-anchor="middle">'+xe(t)+'</text>';
+      if(k<n-1)s+='<line x1="'+(xs[k]+nws[k]+1)+'" y1="'+(top+NH/2)+'" x2="'+(xs[k+1]-3)+'" y2="'+(top+NH/2)+'" class="ar" marker-end="url(#ah)"/>';
+    });
+    if(ch.end==='null'){
+      if(n)s+='<line x1="'+(xs[n-1]+nws[n-1]+1)+'" y1="'+(top+NH/2)+'" x2="'+(nullX-3)+'" y2="'+(top+NH/2)+'" class="ar" marker-end="url(#ah)"/>';
+      s+='<text x="'+nullX+'" y="'+(top+NH/2+4)+'" class="nl">null</text>';
+    }
+    if(hasLoop&&ch.loop>=0&&ch.loop<n){
+      const x1=xs[n-1]+nws[n-1]/2,x2=xs[ch.loop]+nws[ch.loop]/2,yb=top+NH+18;
+      s+='<path d="M'+x1+' '+(top+NH+1)+' V'+yb+' H'+x2+' V'+(top+NH+3)+'" class="ar" fill="none" marker-end="url(#ah)"/>';
+    }
+    s+=ptrDraw(pl,top,top+NH,pch&&pch.ptr,ch.ptr);
+    cy=top+NH+(hasLoop?24:6)+(pm.below?38:0)+8;
+  });
+  return {s,h:Math.max(cy-y0-8,NH)};
+}
+function chipRow(label,chips,x0,y0,aw){
+  let s='',lx=label?78:0,x=x0+lx,y=y0;
+  if(label)s+='<text x="'+x0+'" y="'+(y0+18)+'" class="lb2">'+xe(label)+'</text>';
+  if(!chips.length)return {s:s+'<text x="'+x+'" y="'+(y0+18)+'" class="nl">(empty)</text>',h:28};
+  for(const c of chips){
+    const w=c.txt.length*7.8+18;
+    if(x+w>x0+aw&&x>x0+lx){x=x0+lx;y+=32}
+    s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="24" rx="12" class="'+(c.ok?'okc':c.chg?'chg':'cc')+'"/><text x="'+(x+w/2)+'" y="'+(y+16)+'" class="cx" text-anchor="middle">'+xe(c.txt)+'</text>';
+    x+=w+8;
+  }
+  return {s,h:y-y0+28};
+}
+function dMap(it,pv,x0,y0,aw){
+  const ent=it.entries||[],pe=pv&&pv.t==='map'&&pv.label===it.label?(pv.entries||[]):null,hl=new Set((it.hl||[]).map(String));
+  const keyOf=e=>String(Array.isArray(e)?e[0]:e);
+  const chips=ent.map(e=>{
+    const txt=Array.isArray(e)?((e[1]===''||e[1]===undefined)?String(e[0]):e[0]+': '+e[1]):String(e),k=keyOf(e);
+    const p=pe&&pe.find(q=>keyOf(q)===k);
+    return {txt,chg:hl.has(k)||(!!pe&&(!p||JSON.stringify(p)!==JSON.stringify(e)))};
+  });
+  return chipRow(it.label,chips,x0,y0,aw);
+}
+function dVars(it,pv,x0,y0,aw){
+  const v=it.vars||{},pvv=pv&&pv.t==='vars'?(pv.vars||{}):null,hl=new Set(it.hl||[]);
+  const chips=Object.keys(v).map(k=>({txt:k+' = '+v[k],chg:hl.has(k)||(!!pvv&&String(pvv[k])!==String(v[k])),ok:it.ok&&it.ok.includes(k)}));
+  return chipRow(it.label,chips,x0,y0,aw);
+}
+function framesSvg(title,subtitle,frames,notes,opts){
+  opts=opts||{};frames=(Array.isArray(frames)?frames:[]).filter(f=>f&&typeof f==='object');
+  if(!frames.length)return null;
+  const W=848,PAD=24,PW=W-PAD*2;let y=PAD,out='';
+  const T=(x,yy,s,cls,extra)=>'<text x="'+x+'" y="'+yy+'" class="'+cls+'"'+(extra||'')+'>'+xe(s)+'</text>';
+  out+=T(PAD,y+18,title,'ti');y+=30;
+  if(subtitle){const sl=wrapTxt('Input: '+String(subtitle).replace(/^input:\s*/i,''),100);sl.forEach((l,k)=>out+=T(PAD,y+14+k*16,l,'su'));y+=sl.length*16+8}
+  y+=6;
+  frames.forEach((fr,fi)=>{
+    const prev=(!opts.model&&fi)?frames[fi-1]:null;let cy=y+10,body='';
+    body+=T(PAD+14,cy+14,fr.title||('Step '+(fi+1)),'ct2');cy+=26;
+    if(fr.note){wrapTxt(fr.note,104).forEach(l=>{body+=T(PAD+14,cy+12,l,'nt2');cy+=16});cy+=4}
+    (Array.isArray(fr.items)?fr.items:[]).forEach((it,ii)=>{
+      const pv=prev&&Array.isArray(prev.items)?prev.items[ii]:null,x0=PAD+14,aw=PW-28;let r={s:'',h:0};
+      if(it&&it.t==='array')r=dArray(it,pv,x0,cy,aw);else if(it&&it.t==='list')r=dList(it,pv,x0,cy,aw);
+      else if(it&&it.t==='map')r=dMap(it,pv,x0,cy,aw);else if(it&&it.t==='vars')r=dVars(it,pv,x0,cy,aw);
+      body+=r.s;cy+=r.h+8;
+    });
+    const ph=cy-y+4;
+    out+='<rect x="'+PAD+'" y="'+y+'" width="'+PW+'" height="'+ph+'" rx="10" class="pn"/>'+body;
+    y+=ph;
+    if(fi<frames.length-1){out+='<line x1="'+(W/2)+'" y1="'+(y+2)+'" x2="'+(W/2)+'" y2="'+(y+16)+'" class="ar" marker-end="url(#ah)"/>';y+=20}
+  });
+  y+=14;
+  if(Array.isArray(notes)&&notes.length){
+    const nl=[];notes.forEach(n=>{const good=/^(return|result|answer|so the answer|the answer)/i.test(n);wrapTxt(n,108).forEach(l=>nl.push({l,good}))});
+    const bh=nl.length*18+16;
+    out+='<rect x="'+PAD+'" y="'+y+'" width="'+PW+'" height="'+bh+'" rx="8" class="nb"/>';
+    nl.forEach((n,k)=>out+=T(PAD+14,y+22+k*18,n.l,n.good?'ng':'nt'));
+    y+=bh+14;
+  }
+  out+=T(PAD,y+10,opts.model?'A picture of the idea':'Amber = changed since the previous step. Green = matched or final. Grey = ignored.','lg')+T(W-PAD,y+10,'DSA Tracker','lg',' text-anchor="end"');
+  const H=y+10+PAD;
+  const css='text{font-family:-apple-system,&quot;Segoe UI&quot;,Roboto,Helvetica,Arial,sans-serif}.ti{font-size:20px;font-weight:700;fill:#0f172a}.su{font-size:12.5px;fill:#475569}.pn{fill:#fff;stroke:#cbd5e1;stroke-width:1.2}.ct2{font-size:13.5px;font-weight:700;fill:#0f172a}.nt2{font-size:12.5px;fill:#475569}.cc{fill:#fff;stroke:#94a3b8;stroke-width:1.3}.chg{fill:#fef3c7;stroke:#f59e0b;stroke-width:1.6}.okc{fill:#dcfce7;stroke:#16a34a;stroke-width:1.6}.dimc{fill:#f1f5f9;stroke:#cbd5e1;stroke-dasharray:3 2}.vc{fill:none;stroke:#cbd5e1;stroke-dasharray:3 3}.cx{font-family:'+FMONO+';font-size:13px;font-weight:600;fill:#0f172a}.cxd{font-family:'+FMONO+';font-size:13px;fill:#94a3b8}.ix{font-size:10px;fill:#94a3b8}.pl{font-size:11.5px;font-weight:600;fill:#4338ca}.pm{font-size:11.5px;font-weight:700;fill:#b45309}.pa{fill:#4338ca}.pam{fill:#b45309}.pln{stroke:#4338ca;stroke-width:1}.lb2{font-size:12px;font-weight:600;fill:#64748b}.nl{font-family:'+FMONO+';font-size:12px;fill:#94a3b8}.ar{stroke:#94a3b8;stroke-width:1.6}.nb{fill:#f8fafc;stroke:#e2e8f0}.nt{font-size:13px;fill:#334155}.ng{font-size:13px;font-weight:700;fill:#15803d}.lg{font-size:11px;fill:#94a3b8}';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'"><defs><marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker><style>'+css+'</style></defs><rect width="'+W+'" height="'+H+'" fill="#ffffff"/>'+out+'</svg>';
+  return {svg,w:W,h:H};
+}
+
 function traceInfo(i,vi){
   const v=vi>=0?i.versions[vi]:null;
-  return v?{title:i.title+' · '+v.name,sub:'',text:v.trace}:{title:i.title+' · dry run',sub:i.traceInput||'',text:i.trace};
+  return v?{title:i.title+' · '+v.name,sub:'',subF:'',text:v.trace,frames:v.frames}
+          :{title:i.title+' · dry run',sub:i.traceInput||'',subF:i.framesInput||i.traceInput||'',text:i.trace,frames:i.frames};
 }
-const traceFile=(i,vi,ext)=>slugF(i.title)+(vi>=0?'-alt'+(vi+1):'')+'-dry-run.'+ext;
+const hasFrames=t=>Array.isArray(t.frames)&&t.frames.length>0;
+function traceDiagram(i,vi,mode){
+  const t=traceInfo(i,vi),m=mode||(hasFrames(t)?'frames':'cards');
+  if(m==='frames'&&hasFrames(t)){const d=framesSvg(t.title,t.subF,t.frames,parseTrace(t.text).notes);if(d)return d}
+  return traceSvg(t.title,t.sub,t.text);
+}
+const traceFile=(i,vi,ext,suffix)=>slugF(i.title)+(vi>=0?'-alt'+(vi+1):'')+'-dry-run'+(suffix||'')+'.'+ext;
+const dataUrl=svg=>'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 function dl(blob,name){const u=URL.createObjectURL(blob);const a=h('a',{href:u,download:name});document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
-async function savePng(i,vi){
-  const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;
-  try{dl(await svgToPng(d.svg,d.w,d.h),traceFile(i,vi,'png'))}catch(e){alert('Could not make the PNG in this browser. Use Save SVG instead.')}
-}
-function saveSvg(i,vi){const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;dl(new Blob([d.svg],{type:'image/svg+xml'}),traceFile(i,vi,'svg'))}
+async function pngOf(d,name){try{dl(await svgToPng(d.svg,d.w,d.h),name)}catch(e){alert('Could not make the PNG in this browser. Use Save SVG instead.')}}
+function svgOf(d,name){dl(new Blob([d.svg],{type:'image/svg+xml'}),name)}
+const modeSuffix=(i,vi,mode)=>mode==='cards'&&hasFrames(traceInfo(i,vi))?'-cards':'';
+async function savePng(i,vi,mode){const d=traceDiagram(i,vi,mode);if(!d)return;await pngOf(d,traceFile(i,vi,'png',modeSuffix(i,vi,mode)))}
+function saveSvg(i,vi,mode){const d=traceDiagram(i,vi,mode);if(!d)return;svgOf(d,traceFile(i,vi,'svg',modeSuffix(i,vi,mode)))}
 function traceTools(i,vi){
-  const t=traceInfo(i,vi);if(!parseTrace(t.text).blocks.length)return null;
+  const t=traceInfo(i,vi);if(!hasFrames(t)&&!parseTrace(t.text).blocks.length)return null;
   return h('div',{class:'row',style:'margin:8px 0 2px'},
     h('button',{onclick:()=>diagramView(i.id,vi)},'View as diagram'),h('button',{onclick:()=>savePng(i,vi)},'Save PNG'),h('button',{onclick:()=>saveSvg(i,vi)},'Save SVG'));
 }
-function diagramView(id,vi){
+function diagramView(id,vi,mode){
   const i=items.find(x=>x.id===id);if(!i)return;
-  const t=traceInfo(i,vi),d=traceSvg(t.title,t.sub,t.text);if(!d)return;
+  const t=traceInfo(i,vi),both=hasFrames(t)&&parseTrace(t.text).blocks.length>0,m=mode||(hasFrames(t)?'frames':'cards'),d=traceDiagram(i,vi,m);if(!d)return;
   modal(
     h('div',{class:'row'},h('h1',{style:'flex:1'},'Dry run diagram'),h('button',{onclick:()=>view(id)},'Back'),h('button',{onclick:close},'Close')),
-    h('div',{style:'overflow-x:auto;margin-top:10px'},h('img',{src:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(d.svg),alt:'Dry run diagram for '+i.title,style:'max-width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#fff'})),
-    h('div',{class:'row',style:'margin-top:12px'},h('button',{class:'p',onclick:()=>savePng(i,vi)},'Save PNG'),h('button',{onclick:()=>saveSvg(i,vi)},'Save SVG')));
+    both?h('div',{class:'tabs'},h('button',{class:m==='frames'?'on':'',onclick:()=>diagramView(id,vi,'frames')},'Structure'),h('button',{class:m==='cards'?'on':'',onclick:()=>diagramView(id,vi,'cards')},'Step cards')):null,
+    h('div',{style:'overflow-x:auto;margin-top:10px'},h('img',{src:dataUrl(d.svg),alt:'Dry run diagram for '+i.title,style:'max-width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#fff'})),
+    h('div',{class:'row',style:'margin-top:12px'},h('button',{class:'p',onclick:()=>savePng(i,vi,m)},'Save PNG'),h('button',{onclick:()=>saveSvg(i,vi,m)},'Save SVG')));
+}
+function modelDiagram(i){const m=i.model;if(!m||!Array.isArray(m.frames))return null;return framesSvg('Mental model · '+i.title,'',m.frames,m.caption?[m.caption]:[],{model:true})}
+function modelBlock(i){
+  const d=modelDiagram(i);if(!d)return null;const nm=slugF(i.title)+'-mental-model';
+  return h('details',{},h('summary',{},i.model.title||'Show the picture'),
+    h('div',{style:'overflow-x:auto;margin-top:8px'},h('img',{src:dataUrl(d.svg),alt:'Mental model for '+i.title,style:'max-width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#fff'})),
+    h('div',{class:'row',style:'margin-top:8px'},h('button',{onclick:()=>pngOf(d,nm+'.png')},'Save PNG'),h('button',{onclick:()=>svgOf(d,nm+'.svg')},'Save SVG')));
 }
 
 const REVF=['lastRevised','nextRevision','recall','solvedWithoutHelp','timeTaken','mistakeType','mentalModel'];
@@ -617,6 +795,7 @@ function view(id){
     i.tags&&h('div',{class:'sub'},'Tags: '+i.tags),
     sec('Revision',revSec),
     sec('Next time: how to approach it',next),
+    sec('Mental model (try to recall it before you open it)',modelBlock(i)),
     (i.time||i.space)?sec('Complexity (final solution)',h('p',{class:'n'},`Time: ${i.time||'—'}   Space: ${i.space||'—'}`)):null,
     sec('Approach',i.approach&&h('p',{class:'n'},i.approach)),
     sec('Solution (final)',(i.java||i.js||i.ts)?codeTabs(i):null),
@@ -631,7 +810,7 @@ function view(id){
 }
 function form(i,pre){
   const e=i||{id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:'Todo',difficulty:'Medium',created:Date.now(),...(pre||{})};
-  const F={},vs=[],qs=[];
+  const F={},vs=[],qs=[],vorig=new Map();
   const fld=(k,lab,el,w)=>{F[k]=el;if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;else if(e[k]!=null)el.value=e[k];return h('div',{class:w?'w':''},h('label',{},lab),el)};
   const sel=(...o)=>h('select',{},...o.map(x=>h('option',{},x)));
   const selB=(...o)=>h('select',{},h('option',{value:''},'—'),...o.map(x=>h('option',{},x)));
@@ -643,7 +822,7 @@ function form(i,pre){
       h('div',{class:'row'},mk('name','Name, e.g. Brute force'),mk('time','Time'),mk('space','Space'),
         h('button',{class:'d',onclick:()=>{b.remove();vs.splice(vs.indexOf(f),1)}},'Remove')),
       mk('note','Idea, and what it trades off',2),mk('trace','Small dry run: an input line, then a table like | i | x | and |---|---|',5,1),mk('java','Java',6,1),mk('js','JavaScript',6,1),mk('ts','TypeScript',6,1));
-    vs.push(f);vbox.append(b)};
+    vorig.set(f,v);vs.push(f);vbox.append(b)};
   (e.versions||[]).forEach(addV);
   const qbox=h('div',{class:'w'});
   const addQ=(v={})=>{
@@ -652,6 +831,8 @@ function form(i,pre){
     const b=h('div',{class:'vb'},h('div',{class:'row'},f.q,f.kind,h('button',{class:'d',onclick:()=>{b.remove();qs.splice(qs.indexOf(f),1)}},'Remove')),f.a);
     qs.push(f);qbox.append(b)};
   (e.interview||[]).forEach(addQ);
+  const frTa=ta(4,1,'[{"title":"start","items":[{"t":"array","cells":["1","2"],"ptr":{"i":0}}]}]'),mdTa=ta(4,1,'{"title":"...","caption":"...","frames":[...]}');
+  frTa.value=e.frames?JSON.stringify(e.frames):'';mdTa.value=e.model?JSON.stringify(e.model):'';
   const relTa=ta(4,0,'142. Linked List Cycle II: find where the cycle starts');relTa.value=(e.related||[]).join('\n');
   modal(
     h('h1',{},i?'Edit problem':'Add problem'),
@@ -690,6 +871,9 @@ function form(i,pre){
       fld('timeTaken','Time taken (minutes)',h('input',{type:'number',min:'0'})),
       fld('mistakeType','Mistake type',selB(...MISTAKES)),
       fld('mentalModel','Mental model recalled',selB(...MODELS)),
+      h('h3',{},'Diagrams (advanced: JSON, optional)'),
+      h('div',{class:'w'},h('label',{},'Dry-run frames: what the data looks like at each step'),frTa),
+      h('div',{class:'w'},h('label',{},'Mental model: a picture of the idea'),mdTa),
       h('h3',{},'Notes'),
       fld('notes','Notes, mistakes',ta(3),1)),
     h('datalist',{id:'tl'},...TOPICS.map(t=>h('option',{value:t}))),
@@ -698,7 +882,13 @@ function form(i,pre){
       h('button',{class:'p',onclick:async()=>{
         const o={...e};for(const k in F)o[k]=F[k].value.trim();
         if(!o.title){F.title.focus();return}
-        o.versions=vs.map(f=>Object.fromEntries(Object.entries(f).map(([k,el])=>[k,el.value.trim()]))).filter(v=>v.name||v.java||v.js||v.ts);
+        let fj=null,mj=null;
+        try{fj=frTa.value.trim()?JSON.parse(frTa.value):null;mj=mdTa.value.trim()?JSON.parse(mdTa.value):null}catch(err){alert('The diagrams JSON is not valid: '+err.message);return}
+        if(fj&&!(Array.isArray(fj)&&fj.every(x=>x&&Array.isArray(x.items)))){alert('Dry-run frames must be a list of objects that each have an "items" list.');return}
+        if(mj&&!Array.isArray(mj.frames)){alert('The mental model needs a "frames" list.');return}
+        if(fj)o.frames=fj;else delete o.frames;
+        if(mj)o.model=mj;else delete o.model;
+        o.versions=vs.map(f=>({...(vorig.get(f)||{}),...Object.fromEntries(Object.entries(f).map(([k,el])=>[k,el.value.trim()]))})).filter(v=>v.name||v.java||v.js||v.ts);
         o.interview=qs.map(f=>({q:f.q.value.trim(),kind:f.kind.value,a:f.a.value.trim()})).filter(x=>x.q);
         o.related=relTa.value.split('\n').map(x=>x.trim()).filter(Boolean);
         if(o.timeTaken!==undefined&&o.timeTaken!=='')o.timeTaken=Number(o.timeTaken);
@@ -764,8 +954,17 @@ $('#impf').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   try{
     const arr=JSON.parse(await f.text());
-    if(!Array.isArray(arr)||arr.some(x=>!x||!x.id||!x.title))throw new Error('not a valid backup file');
-    await api('PUT',arr);items=await api('GET');render();alert('Imported '+arr.length+' problems.');
+    if(!Array.isArray(arr)||arr.some(x=>!x||!x.id||(!x.patch&&!x.title)))throw new Error('not a valid backup file');
+    const full=arr.filter(x=>!x.patch),merged=[];let skipped=0;
+    arr.filter(x=>x.patch).forEach(pt=>{
+      const it=items.find(x=>x.id===pt.id);if(!it){skipped++;return}
+      const o={...it};
+      ['frames','framesInput','model'].forEach(k=>{if(pt[k]!==undefined)o[k]=pt[k]});
+      if(Array.isArray(pt.versionFrames))o.versions=(o.versions||[]).map((v,k)=>pt.versionFrames[k]?{...v,frames:pt.versionFrames[k]}:v);
+      merged.push(o)});
+    const send=[...full,...merged];if(send.length)await api('PUT',send);
+    items=await api('GET');render();
+    alert('Imported '+full.length+' problems'+(arr.length>full.length?'; added diagrams to '+merged.length+' existing problems'+(skipped?' ('+skipped+' not found and skipped)':''):'')+'.');
   }catch(err){alert('Import failed: '+err.message)}
 };
 $('#lock').onclick=()=>{localStorage.removeItem(PW);location.reload()};

@@ -37,9 +37,13 @@ object for this problem (no text before or after it), using exactly the structur
       "time": "O(...)", "space": "O(...)",
       "note": "one-line idea and what it trades off",
       "java": "...", "js": "...", "ts": "...",
-      "trace": "small dry run as a markdown table"
+      "trace": "small dry run as a markdown table",
+      "frames": [ <dry-run frames for this alternate, optional> ]
     }
   ],
+  "frames": [ <dry-run frames for the main trace, see "Diagrams" below> ],
+  "framesInput": "the sample input as one short line, e.g. nums = [2,7,11,15], target = 9",
+  "model": { "title": "the idea in one line", "caption": "1-2 sentences", "frames": [ <1 or 2 frames> ] },
   "interview": [
     { "q": "a question an interviewer is likely to ask", "kind": "Follow-up | Concept | Complexity | Edge case | Trade-off", "a": "short model answer" }
   ],
@@ -62,6 +66,21 @@ Rules:
 5. Dry runs must be correct step by step. Use a small input, and show the values that change.
 6. The code fields are JSON strings: use \n for new lines and escape quotes and backslashes.
 7. If I give several problems, return several objects in the same array.
+9. Diagrams. "frames" shows what the data structure looks like at each step of the dry run, one frame per
+   step, using the same sample input as the trace table. Work out each step by tracing my code line by
+   line, and make the last frame show the result. "model" is one picture of the idea of the solution
+   (1 or 2 frames plus a caption), not a trace. Frame format:
+     frame  = { "title": "left = 1, right = 3", "note": "one sentence about this step", "items": [ ...structures... ] }
+     array  = { "t": "array", "label": "nums", "cells": ["2","7","11"], "ptr": { "i": 0, "left, right": 2 }, "hl": [..], "ok": [..], "dim": [..] }
+     list   = { "t": "list", "chains": [ { "label": "list", "nodes": ["1","2","3"], "end": "null", "ptr": { "slow": 1 }, "loop": 0, "ok": [..], "dim": [..] } ] }
+     map    = { "t": "map", "label": "seen", "entries": [["a","3"], "b"] }
+     vars   = { "t": "vars", "vars": { "count": 2, "best": 5 } }
+   Pointers (ptr) are indexes into cells or nodes. An array pointer may be -1 or the length (just off the end).
+   A list pointer may equal the number of nodes to mean "on null" (only when "end" is "null"). Use "loop":
+   <index> instead of "end" for a cycle. ok = matched or final (green), dim = ignored (grey), hl = highlight.
+   The tracker already highlights whatever changed since the previous frame, so only use hl for extra emphasis.
+   Limits: at most 12 frames, 16 array cells and 12 list nodes per picture.
+   The frames must agree with the trace table and with my code. Do not invent steps.
 8. Do not include revision fields (lastRevised, nextRevision, recall, solvedWithoutHelp, timeTaken,
    mistakeType, mentalModel, revisions). The tracker fills those in when I log a revision.
 
