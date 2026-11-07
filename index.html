@@ -70,6 +70,7 @@ input[type=checkbox]{width:auto;padding:0}
 .cbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:8px}.cbar #cq{grid-column:1/-1}
 .opts{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}.opts label{display:flex;gap:6px;align-items:center;font-size:13px;margin:0;cursor:pointer}
 pre.cx{padding:8px 0}.cl{display:flex;white-space:pre}.cl .no{flex:none;width:40px;text-align:right;padding-right:10px;color:var(--mute);user-select:none}.cl.hit{background:rgba(255,196,0,.25)}
+.badge.Upsolved{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
 </style>
 </head>
 <body>
@@ -79,7 +80,7 @@ pre.cx{padding:8px 0}.cl{display:flex;white-space:pre}.cl .no{flex:none;width:40
     <div class="row"><button id="lock" title="Forget password on this device">Lock</button><button id="imp">Import</button><input type="file" id="impf" accept="application/json" hidden><button id="exp">Export</button><button class="p" id="add">+ Add problem</button></div>
   </header>
   <div id="mode"></div>
-  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button><button id="tRel">Related</button><button id="tRev">Revise</button><button id="tCodeSearch">Code</button></div>
+  <div class="nav"><button id="tProb">Problems</button><button id="tPat">Patterns</button><button id="tInt">Interview</button><button id="tRel">Related</button><button id="tRev">Revise</button><button id="tCodeSearch">Code</button><button id="tCp">Contests</button></div>
   <div id="pv">
   <div class="stats" id="stats"></div>
   <div class="bar">
@@ -112,6 +113,16 @@ pre.cx{padding:8px 0}.cl{display:flex;white-space:pre}.cl .no{flex:none;width:40
       <select id="rvr"><option value="">Any recall level</option><option>Red</option><option>Yellow</option><option>Green</option><option value="none">Not rated</option></select>
       <select id="rvm"><option value="">Any mistake type</option><option>Concept</option><option>Logic</option><option>Syntax</option><option>Edge Case</option></select></div>
     <div id="rvl"></div>
+  </div>
+  <div id="cpv" hidden>
+    <div class="sub" id="kc" style="margin-bottom:10px"></div>
+    <div class="stats" id="kst"></div>
+    <div class="bar4"><input id="kq" placeholder="Search title, contest, tags, statement, code…">
+      <select id="kp"></select>
+      <select id="ks"><option value="">All status</option><option>Todo</option><option>Attempted</option><option>Solved</option><option>Upsolved</option><option>Revisit</option></select>
+      <select id="kt"></select>
+      <select id="ko"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="title">By title</option></select></div>
+    <div id="kl"></div>
   </div>
   <div id="codev" hidden>
     <div class="sub" id="cc" style="margin-bottom:10px"></div>
@@ -160,7 +171,7 @@ async function del(id){
 let tab='problems';
 const PATS=["Two Pointers","Sliding Window","Fast & Slow Pointers","Prefix Sum","Hashing","Binary Search","Monotonic Stack","BFS","DFS","Backtracking","DP (1D)","DP (2D)","Greedy","Heap / Top-K","Union Find","Topological Sort","Intervals","Trie","Bit Manipulation"];
 const CUES={"Two Pointers":"Sorted array or string; find a pair or triplet; compare both ends; in-place removal or partition.","Sliding Window":"Contiguous subarray or substring; longest, shortest or count under a constraint; the window grows and shrinks.","Prefix Sum":"Many range-sum queries; subarray sum equals K; cumulative counts.","Hashing":"Need fast lookup, counts, duplicates or a complement (target - x).","Binary Search":"Sorted data, or a monotonic yes/no answer you can search on (smallest or largest feasible value).","Monotonic Stack":"Next greater or smaller element; spans; largest rectangle.","BFS":"Shortest path in an unweighted graph or grid; level by level; minimum steps.","DFS":"Explore all paths, connected components, tree recursion, cycle detection.","Backtracking":"Generate all combinations, permutations or subsets: choose, explore, undo.","DP (1D)":"Overlapping subproblems; count ways or min/max; state depends on the previous few values.","DP (2D)":"Two sequences or a grid; state is (i, j); LCS, edit distance, grid paths.","Greedy":"A local best choice is provably safe; intervals and scheduling; try sorting first.","Heap / Top-K":"K largest or smallest, streaming median, repeatedly need the current min or max."};
-const P=()=>items.filter(i=>i.kind!=='pattern'),PR=()=>items.filter(i=>i.kind==='pattern');
+const P=()=>items.filter(i=>i.kind!=='pattern'&&i.kind!=='cp'),PR=()=>items.filter(i=>i.kind==='pattern');
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const patNames=()=>{const c={};P().forEach(i=>{if(i.pattern)c[i.pattern]=(c[i.pattern]||0)+1});
   return [...new Set([...PATS,...PR().map(p=>p.title),...Object.keys(c)])].sort((a,b)=>(c[b]||0)-(c[a]||0)||a.localeCompare(b))};
@@ -178,7 +189,7 @@ function rich(t){
   fl();ft();return out}
 
 function codeTabs(o){
-  const langs=[['java','Java'],['js','JavaScript'],['ts','TypeScript']].filter(([k])=>o[k]);
+  const langs=[['cpp','C++'],['java','Java'],['py','Python'],['js','JavaScript'],['ts','TypeScript']].filter(([k])=>o[k]);
   const box=h('div'),tabs=h('div',{class:'tabs'});let cur=langs[0]?.[0];
   const show=()=>{
     tabs.replaceChildren(...langs.map(([k,n])=>h('button',{class:k===cur?'on':'',onclick:()=>{cur=k;show()}},n)),
@@ -520,6 +531,103 @@ function modelBlock(i){
     h('div',{class:'row',style:'margin-top:8px'},h('button',{onclick:()=>pngOf(d,nm+'.png')},'Save PNG'),h('button',{onclick:()=>svgOf(d,nm+'.svg')},'Save SVG')));
 }
 
+/* ---- Contests: CodeChef, Codeforces and other platforms, kept apart from the LeetCode problems ---- */
+const CPS=()=>items.filter(i=>i.kind==='cp');
+const CP_STATUS=['Todo','Attempted','Solved','Upsolved','Revisit'];
+const CP_PLATFORMS=['Codeforces','CodeChef','AtCoder','HackerRank','HackerEarth','GeeksforGeeks','CSES','SPOJ','Kattis'];
+const CP_LANGS=[['cpp','C++'],['java','Java'],['py','Python'],['js','JavaScript'],['ts','TypeScript']];
+const CP_TEXT=['platform','code','contest','url','rating','solvedOn','tags','statement','approach','time','space','notes'];
+const cpTags=i=>String(i.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+const cpDone=i=>i.status==='Solved'||i.status==='Upsolved';
+const cpSlug=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50);
+function cpNewId(o){
+  const base='cp-'+(cpSlug(o.platform)||'other')+'-'+(cpSlug(o.code||o.title)||'problem');
+  let id=base,n=2;while(items.some(x=>x.id===id))id=base+'-'+(n++);return id;
+}
+function cpMatch(i){
+  const q=$('#kq').value.toLowerCase(),p=$('#kp').value,s=$('#ks').value,t=$('#kt').value;
+  if(p&&i.platform!==p)return false;if(s&&i.status!==s)return false;if(t&&!cpTags(i).includes(t))return false;
+  return !q||[i.title,i.platform,i.contest,i.code,i.rating,i.tags,i.statement,i.approach,i.notes,...CP_LANGS.map(([k])=>i[k])].join(' ').toLowerCase().includes(q);
+}
+function cpCard(i){
+  const langs=CP_LANGS.filter(([k])=>i[k]).map(([k,n])=>n).join(', ');
+  return h('div',{class:'item',onclick:()=>cpView(i.id)},
+    h('div',{class:'row'},h('span',{class:'t'},i.title),
+      i.platform&&h('span',{class:'badge'},i.platform),i.code&&h('span',{class:'badge'},i.code),i.rating&&h('span',{class:'badge'},String(i.rating)),
+      h('span',{class:'badge '+(i.status||'Todo')},i.status||'Todo')),
+    h('div',{class:'row sub',style:'margin-top:4px'},i.contest,cpTags(i).length?'· '+cpTags(i).join(', '):null,langs?'· '+langs:null));
+}
+function cpView(id){
+  const i=items.find(x=>x.id===id&&x.kind==='cp');if(!i)return;
+  const st=h('select',{onchange:async e=>{i.status=e.target.value;await save(i);cpView(id)}},...CP_STATUS.map(o=>h('option',{},o)));
+  st.value=i.status||'Todo';st.style.width='auto';
+  const has=CP_LANGS.some(([k])=>i[k]),meta=[i.contest,i.solvedOn?'Solved on '+i.solvedOn:''].filter(Boolean).join(' · ');
+  modal(
+    h('div',{class:'row'},h('h1',{style:'flex:1'},i.title),h('button',{onclick:close},'Close')),
+    h('div',{class:'row',style:'margin:8px 0'},i.platform&&h('span',{class:'badge'},i.platform),i.code&&h('span',{class:'badge'},i.code),i.rating&&h('span',{class:'badge'},String(i.rating)),st,
+      i.url&&h('a',{href:i.url,target:'_blank',rel:'noopener'},'Open problem ↗')),
+    meta?h('div',{class:'sub'},meta):null,
+    cpTags(i).length?h('div',{class:'sub'},'Tags: '+cpTags(i).join(', ')):null,
+    sec('Problem',i.statement&&h('p',{class:'n'},i.statement)),
+    sec('Approach / answer',i.approach&&h('p',{class:'n'},i.approach)),
+    (i.time||i.space)?sec('Complexity',h('p',{class:'n'},'Time: '+(i.time||'—')+'   Space: '+(i.space||'—'))):null,
+    sec('Solution',has?codeTabs(i):null),
+    sec('Notes / mistakes',i.notes&&h('p',{class:'n'},i.notes)),
+    h('div',{class:'row',style:'margin-top:18px'},h('button',{class:'p',onclick:()=>cpForm(i)},'Edit'),
+      h('button',{class:'d',onclick:async()=>{if(confirm('Delete this contest problem?')){await del(i.id);close()}}},'Delete')));
+}
+function cpForm(i){
+  const e=i||{kind:'cp',status:'Todo',created:Date.now()},F={};
+  const fld=(k,lab,el,w)=>{F[k]=el;if(el.tagName==='SELECT')el.value=e[k]||el.options[0].value;else if(e[k]!==undefined&&e[k]!==null)el.value=e[k];return h('div',{class:w?'w':''},h('label',{},lab),el)};
+  const ta=(r,code)=>{const a={rows:r};if(code){a.class='code';a.spellcheck='false';a.onkeydown=ev=>{if(ev.key==='Tab'){ev.preventDefault();const t=ev.target;t.setRangeText('  ',t.selectionStart,t.selectionEnd,'end')}}}return h('textarea',a)};
+  modal(
+    h('h1',{},i?'Edit contest problem':'Add contest problem'),h('div',{class:'sub'},'Kept separate from your LeetCode problems.'),
+    h('div',{class:'f',style:'margin-top:12px'},
+      fld('title','Title *',h('input',{placeholder:'e.g. A. Watermelon'}),1),
+      fld('platform','Platform',h('input',{list:'cpl',placeholder:'Codeforces'})),
+      fld('code','Problem code or number',h('input',{placeholder:'e.g. 4A or START100A'})),
+      fld('contest','Contest',h('input',{placeholder:'e.g. Codeforces Round 900 (Div. 2)'}),1),
+      fld('url','Link',h('input',{placeholder:'https://…'}),1),
+      fld('rating','Rating or difficulty',h('input',{placeholder:'e.g. 1200, 3★ or Medium'})),
+      fld('status','Status',h('select',{},...CP_STATUS.map(x=>h('option',{},x)))),
+      fld('solvedOn','Date solved',h('input',{type:'date'})),
+      fld('tags','Tags (comma separated)',h('input',{placeholder:'greedy, math, dp'})),
+      h('h3',{},'Question'),
+      fld('statement','Problem statement (a summary is fine)',ta(6),1),
+      h('h3',{},'Answer'),
+      fld('approach','Approach or explanation',ta(5),1),
+      fld('time','Time complexity',h('input',{placeholder:'O(n log n)'})),
+      fld('space','Space complexity',h('input',{placeholder:'O(n)'})),
+      ...CP_LANGS.map(([k,n])=>fld(k,n+' solution',ta(10,1),1)),
+      h('h3',{},'Notes'),
+      fld('notes','Notes, mistakes, what the editorial said',ta(4),1)),
+    h('datalist',{id:'cpl'},...CP_PLATFORMS.map(x=>h('option',{value:x}))),
+    h('div',{class:'row',style:'margin-top:16px'},
+      h('button',{class:'p',onclick:async()=>{
+        const o={...e,kind:'cp'};for(const k in F)o[k]=F[k].value.trim();
+        if(!o.title){F.title.focus();return}
+        [...CP_TEXT,...CP_LANGS.map(([k])=>k)].forEach(k=>{if(o[k]==='')delete o[k]});
+        if(!o.id)o.id=cpNewId(o);
+        await save(o);i?cpView(o.id):close();}},'Save'),
+      h('button',{onclick:()=>i?cpView(i.id):close()},'Cancel')));
+  F.title.focus();
+}
+function renderCp(){
+  const on=tab==='contests';
+  $('#tCp').className=on?'on':'';$('#cpv').hidden=!on;
+  $('#add').textContent=on?'+ Add contest problem':'+ Add problem';
+  const A=CPS(),pe=$('#kp'),cp=pe.value,plats=[...new Set(A.map(i=>i.platform).filter(Boolean))].sort();
+  pe.replaceChildren(h('option',{value:''},'All platforms'),...plats.map(t=>h('option',{value:t},t)));pe.value=plats.includes(cp)?cp:'';
+  const te=$('#kt'),ct=te.value,tags=[...new Set(A.flatMap(cpTags))].sort();
+  te.replaceChildren(h('option',{value:''},'Any tag'),...tags.map(t=>h('option',{value:t},t)));te.value=tags.includes(ct)?ct:'';
+  const per={};A.forEach(i=>{const p=i.platform||'Other';per[p]=(per[p]||0)+1});
+  const top=Object.entries(per).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,4);
+  $('#kst').replaceChildren(...[['Total',A.length],['Solved',A.filter(cpDone).length],['To do',A.filter(i=>!cpDone(i)).length],...top].map(([l,v])=>h('div',{class:'stat'},h('b',{},v),h('span',{},l))));
+  const so=$('#ko').value,res=A.filter(cpMatch).sort(so==='title'?(a,b)=>String(a.title).localeCompare(String(b.title)):so==='old'?(a,b)=>(a.created||0)-(b.created||0):(a,b)=>(b.updated||b.created||0)-(a.updated||a.created||0));
+  $('#kc').textContent=res.length+' of '+A.length+' contest problems. These are kept separate from your LeetCode problems.';
+  $('#kl').replaceChildren(...(res.length?res.map(cpCard):[h('div',{class:'empty'},A.length?'No contest problems match these filters.':'No contest problems yet. Press “+ Add contest problem” to add your first one from Codeforces, CodeChef or any other platform.')]));
+}
+
 const REVF=['lastRevised','nextRevision','recall','solvedWithoutHelp','timeTaken','mistakeType','mentalModel'];
 const RECALLS=['Red','Yellow','Green'],MISTAKES=['Concept','Logic','Syntax','Edge Case'],MODELS=['Yes','Partial','No'];
 const RED_DAYS=1,YELLOW_DAYS=3,GREEN_STEPS=[7,14,30,60];
@@ -752,7 +860,7 @@ function render(){
     if(q&&![i.title,i.tags,i.notes,i.approach,i.java,i.js,i.ts,i.topic,i.pattern,i.cue,i.insight,i.mistakeType,i.recall,(i.interview||[]).map(x=>x.q+' '+x.a).join(' '),(i.related||[]).join(' '),(i.versions||[]).map(v=>[v.name,v.java,v.js,v.ts].join(' ')).join(' ')].join(' ').toLowerCase().includes(q))return false;
     return true}).sort((a,b)=>(b.updated||0)-(a.updated||0));
   $('#list').replaceChildren(...(res.length?res.map(card):[h('div',{class:'empty'},A.length?'No problems match these filters.':'No problems yet. Click “+ Add problem” to log your first one.')]));
-  renderPats();renderInt();renderRel();renderRevise();renderCode();
+  renderPats();renderInt();renderRel();renderRevise();renderCode();renderCp();
 }
 function card(i){
   return h('div',{class:'item',onclick:()=>view(i.id)},
@@ -934,7 +1042,7 @@ function patForm(n){
   if(n)F.title.disabled=true;else F.title.focus();
 }
 
-$('#add').onclick=()=>form();
+$('#add').onclick=()=>tab==='contests'?cpForm():form();
 $('#addp').onclick=()=>patForm();
 $('#tProb').onclick=()=>{tab='problems';render()};
 $('#tPat').onclick=()=>{tab='patterns';render()};
@@ -942,6 +1050,8 @@ $('#tInt').onclick=()=>{tab='interview';render()};
 $('#tRel').onclick=()=>{tab='related';render()};
 $('#tRev').onclick=()=>{tab='revise';render()};
 $('#tCodeSearch').onclick=()=>{tab='code';render();$('#cq').focus()};
+$('#tCp').onclick=()=>{tab='contests';render()};
+['kq','kp','ks','kt','ko'].forEach(id=>$('#'+id).addEventListener('input',render));
 $('#rq').onclick=practice;
 ['q','fTopic','fDiff','fStat','fLang','iq','ik','it','xq','xs','xsrc','xt','xo','rvq','rvs','rvr','rvm','cq','cl','cw','cs','cr'].forEach(id=>$('#'+id).addEventListener('input',render));
 ['cl','cw','cs','cr'].forEach(id=>$('#'+id).addEventListener('change',render));
