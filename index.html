@@ -1070,11 +1070,12 @@ $('#impf').onchange=async e=>{
       const it=items.find(x=>x.id===pt.id);if(!it){skipped++;return}
       const o={...it};
       ['frames','framesInput','model'].forEach(k=>{if(pt[k]!==undefined)o[k]=pt[k]});
+      if(typeof pt.approach==='string'&&pt.approach.trim())o.approach=pt.approach.trim();
       if(Array.isArray(pt.versionFrames))o.versions=(o.versions||[]).map((v,k)=>pt.versionFrames[k]?{...v,frames:pt.versionFrames[k]}:v);
       merged.push(o)});
     const send=[...full,...merged];if(send.length)await api('PUT',send);
     items=await api('GET');render();
-    alert('Imported '+full.length+' problems'+(arr.length>full.length?'; added diagrams to '+merged.length+' existing problems'+(skipped?' ('+skipped+' not found and skipped)':''):'')+'.');
+    alert('Imported '+full.length+' problems'+(arr.length>full.length?'; updated '+merged.length+' existing problems'+(skipped?' ('+skipped+' not found and skipped)':''):'')+'.');
   }catch(err){alert('Import failed: '+err.message)}
 };
 $('#lock').onclick=()=>{localStorage.removeItem(PW);location.reload()};
